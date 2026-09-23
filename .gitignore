@@ -1,0 +1,16 @@
+.DS_Store
+DerivedData/
+build/
+.build/
+.swiftpm/
+Configuration/LocalSigning.xcconfig
+Packages/
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+*.tmp
+*.swp
+.vscode/
+.idea/
+.specify

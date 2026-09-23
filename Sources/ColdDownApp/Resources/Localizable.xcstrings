@@ -1,0 +1,89 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%@ (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ (%2$@)"
+          }
+        }
+      }
+    },
+    "%@ seconds" : {
+
+    },
+    "°C" : {
+
+    },
+    "Auto" : {
+
+    },
+    "Built-in Apple Silicon fans are not exposed through the Intel SMC interface." : {
+
+    },
+    "Choose a fan to view its settings." : {
+
+    },
+    "Group" : {
+
+    },
+    "Hottest temperature" : {
+
+    },
+    "Hottest: %@" : {
+
+    },
+    "Manual" : {
+
+    },
+    "Mode: %@" : {
+
+    },
+    "No fan telemetry" : {
+
+    },
+    "No temperature sensors available" : {
+
+    },
+    "Overview" : {
+
+    },
+    "Select a fan" : {
+
+    },
+    "Sensor" : {
+
+    },
+    "Sensors" : {
+
+    },
+    "SMC key" : {
+
+    },
+    "State" : {
+
+    },
+    "Temperature" : {
+
+    },
+    "This Mac did not return any readable temperature services." : {
+
+    },
+    "Unavailable" : {
+
+    }
+  },
+  "version" : "1.0"
+}

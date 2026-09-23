@@ -1,0 +1,11 @@
+{
+  "configurations" : [
+    { "id" : "DD2A72AF-58E0-4DB0-8A8A-5FA41BE31D51", "name" : "Debug", "options" : {} }
+  ],
+  "defaultOptions" : { "codeCoverage" : false, "targetForVariableExpansion" : { "containerPath" : "container:ColdDown.xcodeproj", "identifier" : "A00000000000000000000001", "name" : "ColdDownApp" } },
+  "testTargets" : [
+    { "parallelizable" : true, "target" : { "containerPath" : "container:ColdDown.xcodeproj", "identifier" : "A00000000000000000000003", "name" : "ColdDownTests" } },
+    { "parallelizable" : false, "target" : { "containerPath" : "container:ColdDown.xcodeproj", "identifier" : "A00000000000000000000004", "name" : "ColdDownUITests" } }
+  ],
+  "version" : 1
+}

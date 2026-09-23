@@ -1,0 +1,6 @@
+// Copy this file to LocalSigning.xcconfig and fill in your Apple Developer values.
+// The local file is ignored so personal team details are not committed.
+DEVELOPMENT_TEAM = YOUR_TEAM_ID
+THERMAL_APP_BUNDLE_ID = com.yourcompany.ColdDown
+THERMAL_HELPER_BUNDLE_ID = com.yourcompany.ColdDown.Helper
+THERMAL_HELPER_MACH_SERVICE = com.yourcompany.ColdDown.Helper

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+    <key>CFBundleIdentifier</key><string>$(THERMAL_HELPER_BUNDLE_ID)</string>
+    <key>CFBundleName</key><string>ColdDownHelper</string>
+    <key>CFBundleVersion</key><string>$(THERMAL_CURRENT_PROJECT_VERSION)</string>
+    <key>ThermalExpectedClientIdentifier</key><string>$(THERMAL_APP_BUNDLE_ID)</string>
+    <key>ThermalExpectedClientTeamIdentifier</key><string>$(DEVELOPMENT_TEAM)</string>
+    <key>ThermalHelperMachService</key><string>$(THERMAL_HELPER_MACH_SERVICE)</string>
+</dict></plist>
