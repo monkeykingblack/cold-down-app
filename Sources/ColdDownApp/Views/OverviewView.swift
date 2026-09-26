@@ -93,7 +93,9 @@ struct OverviewView: View {
     // MARK: Sensors
 
     /// One row per sensor group in a fixed order, showing that group's hottest reading. Rows never reorder;
-    /// only the values (and, occasionally, which sensor is hottest within a group) change.
+    /// only the values (and, occasionally, which sensor is hottest within a group) change. The section takes
+    /// whatever height the cards above leave it and flows its rows into extra columns to fit, so a Mac with
+    /// two built-in fans (one fan row more than a single-fan Mac) does not push the page past the window.
     private var sensorsCard: some View {
         let hottestByGroup = model.snapshot.sensors.hottestByGroup
         let groups = SensorGroup.allCases.filter { hottestByGroup[$0] != nil }
@@ -106,38 +108,89 @@ struct OverviewView: View {
                     .font(.caption)
             }
             .padding(.horizontal, 4)
-            DashboardCard(padding: 10) {
+            DashboardCard(padding: 10, fillHeight: true) {
                 if groups.isEmpty {
                     Label("No temperature sensors available", systemImage: "thermometer.medium.slash")
                         .foregroundStyle(.secondary)
                 } else {
-                    VStack(spacing: 8) {
-                        ForEach(groups, id: \.self) { group in
-                            let reading = hottestByGroup[group]
-                            HStack(spacing: 10) {
-                                Text(group.rawValue)
-                                    .font(.caption.weight(.medium))
-                                    .frame(width: 64, alignment: .leading)
-                                VStack(alignment: .leading, spacing: 3) {
-                                    TemperatureBar(celsius: reading?.valueCelsius)
-                                    Text(reading?.identity.name ?? "")
-                                        .font(.caption2)
-                                        .foregroundStyle(.tertiary)
-                                        .lineLimit(1)
-                                }
-                                Text(DisplayFormat.temperature(reading?.valueCelsius))
-                                    .font(.caption.weight(.semibold))
-                                    .monospacedDigit()
-                                    .foregroundStyle(Dashboard.temperatureColor(reading?.valueCelsius))
-                                    .frame(width: 58, alignment: .trailing)
-                                    .numericTransition(value: reading?.valueCelsius)
-                            }
-                            .accessibilityElement(children: .combine)
-                        }
-                    }
+                    SensorGroupColumns(groups: groups, hottestByGroup: hottestByGroup)
                 }
             }
         }
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+}
+
+// MARK: - Sensor group rows
+
+/// The group rows, in one column while the page has room for them and in as many columns as it takes when it
+/// does not. `ViewThatFits` measures the real rows, so the choice follows the actual text metrics instead of
+/// an assumed row height. The canonical group order still reads top-to-bottom down each column, so a row
+/// never moves because a value changed.
+private struct SensorGroupColumns: View {
+    let groups: [SensorGroup]
+    let hottestByGroup: [SensorGroup: SensorReading]
+
+    private static let rowSpacing: CGFloat = 8
+    private static let columnSpacing: CGFloat = 14
+
+    var body: some View {
+        ViewThatFits(in: .vertical) {
+            columns(1)
+            columns(2)
+            columns(3)
+        }
+    }
+
+    private func columns(_ requested: Int) -> some View {
+        let count = max(1, min(requested, groups.count))
+        let perColumn = Int((Double(groups.count) / Double(count)).rounded(.up))
+        return HStack(alignment: .top, spacing: Self.columnSpacing) {
+            ForEach(0..<count, id: \.self) { column in
+                VStack(spacing: Self.rowSpacing) {
+                    ForEach(slice(column: column, perColumn: perColumn), id: \.self) { group in
+                        SensorGroupRow(group: group, reading: hottestByGroup[group], compact: count > 1)
+                    }
+                    // Keeps a short last column aligned with the top of the others.
+                    Spacer(minLength: 0)
+                }
+            }
+        }
+    }
+
+    private func slice(column: Int, perColumn: Int) -> [SensorGroup] {
+        let start = min(column * perColumn, groups.count)
+        return Array(groups[start..<min(start + perColumn, groups.count)])
+    }
+}
+
+private struct SensorGroupRow: View {
+    let group: SensorGroup
+    let reading: SensorReading?
+    /// Trims the fixed label and value columns when the rows share the card's width.
+    var compact = false
+
+    var body: some View {
+        HStack(spacing: compact ? 8 : 10) {
+            Text(group.rawValue)
+                .font(.caption.weight(.medium))
+                .lineLimit(1)
+                .frame(width: compact ? 56 : 64, alignment: .leading)
+            VStack(alignment: .leading, spacing: 3) {
+                TemperatureBar(celsius: reading?.valueCelsius)
+                Text(reading?.identity.name ?? "")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+            }
+            Text(DisplayFormat.temperature(reading?.valueCelsius))
+                .font(.caption.weight(.semibold))
+                .monospacedDigit()
+                .foregroundStyle(Dashboard.temperatureColor(reading?.valueCelsius))
+                .frame(width: compact ? 52 : 58, alignment: .trailing)
+                .numericTransition(value: reading?.valueCelsius)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
