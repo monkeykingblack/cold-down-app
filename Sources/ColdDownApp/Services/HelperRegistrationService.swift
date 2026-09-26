@@ -2,6 +2,12 @@ import Foundation
 import ServiceManagement
 import ThermalCore
 
+#if !compiler(>=6.2)
+// The macOS 26 SDK declares `SMAppService` as `Sendable`; earlier SDKs do not, even though the class is
+// thread-safe, so `await service.unregister()` trips Swift 6's sending check when built with Xcode 16.
+extension SMAppService: @retroactive @unchecked Sendable {}
+#endif
+
 @MainActor
 final class HelperRegistrationService: ObservableObject {
     static let autoRegistrationAttemptedKey = "ColdDown.helperAutoRegistrationAttempted"

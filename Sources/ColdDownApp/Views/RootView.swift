@@ -34,12 +34,18 @@ struct RootView: View {
     /// macOS 26 the shared glass background is turned off so each tab highlights on its own under the pointer.
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
+        // `sharedBackgroundVisibility` exists only in the macOS 26 SDK, so the runtime `#available` check
+        // needs a compile-time gate too: older SDKs (Xcode 16 and earlier) do not declare the symbol at all.
+        #if compiler(>=6.2)
         if #available(macOS 26.0, *) {
             ToolbarItem(placement: .principal) { TabBar(selection: $model.destination) }
                 .sharedBackgroundVisibility(.hidden)
         } else {
             ToolbarItem(placement: .principal) { TabBar(selection: $model.destination) }
         }
+        #else
+        ToolbarItem(placement: .principal) { TabBar(selection: $model.destination) }
+        #endif
         ToolbarItem(placement: .primaryAction) { notice }
     }
 
