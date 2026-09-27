@@ -5,14 +5,18 @@ import ThermalCore
 /// Tabbed main window: a custom tab bar in the title bar (⌘1–⌘4 live in the View menu, see ColdDownApp).
 struct RootView: View {
     @EnvironmentObject private var model: AppModel
+    /// SwiftUI keeps a `Window` scene's content alive after its window closes, and the model publishes every
+    /// couple of seconds, so the whole page went on laying out and animating with nothing on screen — about a
+    /// fifth of a core, measured. Dropping the content while the window is away leaves just the menu bar.
+    /// Everything it shows lives in the model or `@AppStorage`, so nothing is lost by rebuilding it.
+    @State private var windowVisible = true
 
     var body: some View {
         Group {
-            switch model.destination {
-            case .overview: OverviewView()
-            case .fans: FansView()
-            case .sensors: SensorsView()
-            case .settings: SettingsView()
+            if windowVisible {
+                destination
+            } else {
+                Color(nsColor: .windowBackgroundColor)
             }
         }
         // Fixed size: the layout is designed for exactly this canvas (the scene uses .contentSize resizability).
@@ -22,12 +26,28 @@ struct RootView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(AccessibilityID.root)
         // The main window's lifetime drives the Dock icon: closing it leaves Cold Down in the menu bar only.
-        .onAppear { NSApp.setActivationPolicy(.regular) }
-        .onDisappear { NSApp.setActivationPolicy(.accessory) }
+        .onAppear {
+            windowVisible = true
+            NSApp.setActivationPolicy(.regular)
+        }
+        .onDisappear {
+            windowVisible = false
+            NSApp.setActivationPolicy(.accessory)
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             model.refreshSystemStatus()
         }
         .task { model.start() }
+    }
+
+    @ViewBuilder
+    private var destination: some View {
+        switch model.destination {
+        case .overview: OverviewView()
+        case .fans: FansView()
+        case .sensors: SensorsView()
+        case .settings: SettingsView()
+        }
     }
 
     /// Tabs sit in the title bar. The window title is hidden (see ColdDownApp) so they always have room, and on

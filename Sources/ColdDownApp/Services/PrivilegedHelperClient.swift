@@ -42,9 +42,9 @@ actor XPCPrivilegedHelperClient: PrivilegedFanHelperClient {
     private let service = SMAppService.daemon(plistName: "ColdDownHelper.plist")
     private var cachedServiceStatus: (value: SMAppService.Status, readAt: ContinuousClock.Instant)?
 
-    /// Shorter than the refresh interval, so a refresh reads the real status once and reuses it for the rest
-    /// of that pass rather than re-reading it per call.
-    private static let serviceStatusLifetime: Duration = .milliseconds(1_500)
+    /// Longer than a refresh interval, so an app that refreshes every couple of seconds does not pay for the
+    /// round trip on every pass. Installing or approving the helper is noticed within this window.
+    private static let serviceStatusLifetime: Duration = .seconds(5)
 
     init(disabled: Bool = false) { self.disabled = disabled }
 
@@ -192,8 +192,9 @@ actor XPCPrivilegedHelperClient: PrivilegedFanHelperClient {
         guard let connection, ObjectIdentifier(connection) == connectionID else { return }
         self.connection = nil
         currentStatus = .unavailable
-        // The helper may have gone away entirely, so do not trust the cached registration state again.
-        cachedServiceStatus = nil
+        // The cached registration state is deliberately kept: a dropped connection says nothing about whether
+        // the daemon is still registered, and a helper that rejects or drops every call would otherwise make
+        // each retry re-ask the background-task daemon, which is the expensive part.
         connection.invalidate()
     }
 

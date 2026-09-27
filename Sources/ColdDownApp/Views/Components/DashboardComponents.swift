@@ -135,13 +135,13 @@ struct TemperatureGauge: View {
                 .trim(from: 0, to: Self.sweep)
                 .stroke(Color.primary.opacity(0.08), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(135))
+            // A flat tint rather than an AngularGradient: conic shading has no GPU fast path, so CoreGraphics
+            // re-rasterized the arc on the CPU for every frame the value animation ran (it showed up in a
+            // profile as `RGBAf16_shade_conic_RGB`). The arc now matches the colour of the reading below it.
             Circle()
                 .trim(from: 0, to: Self.sweep * fraction)
                 .stroke(
-                    AngularGradient(
-                        colors: [.teal, .green, .yellow, .orange, .red],
-                        center: .center, startAngle: .degrees(0), endAngle: .degrees(270)
-                    ),
+                    Dashboard.temperatureColor(celsius),
                     style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
                 )
                 .rotationEffect(.degrees(135))
