@@ -40,12 +40,32 @@ actor XPCPrivilegedHelperClient: PrivilegedFanHelperClient {
     private var currentStatus: HelperStatus = .unavailable
     private let disabled: Bool
     private let service = SMAppService.daemon(plistName: "ColdDownHelper.plist")
+    private var cachedServiceStatus: (value: SMAppService.Status, readAt: ContinuousClock.Instant)?
+
+    /// Shorter than the refresh interval, so a refresh reads the real status once and reuses it for the rest
+    /// of that pass rather than re-reading it per call.
+    private static let serviceStatusLifetime: Duration = .milliseconds(1_500)
 
     init(disabled: Bool = false) { self.disabled = disabled }
 
+    /// `SMAppService.status` is a synchronous round trip to the background-task daemon, and a single refresh
+    /// asks for it five or more times (status, listFans, renewLease, and one setAuto per fan); a profile put
+    /// 86% of the refresh cost inside it. It only changes when the user installs, removes or approves the
+    /// helper, so a brief cache collapses those into one call. Every transport failure clears it, so a helper
+    /// that disappears is still noticed on the very next call.
+    private var serviceStatus: SMAppService.Status {
+        let now = ContinuousClock.now
+        if let cached = cachedServiceStatus, now - cached.readAt < Self.serviceStatusLifetime {
+            return cached.value
+        }
+        let value = service.status
+        cachedServiceStatus = (value, now)
+        return value
+    }
+
     func status() async -> HelperStatus {
         guard !disabled else { return .unavailable }
-        guard service.status == .enabled else {
+        guard serviceStatus == .enabled else {
             currentStatus = mappedServiceStatus
             return currentStatus
         }
@@ -77,7 +97,7 @@ actor XPCPrivilegedHelperClient: PrivilegedFanHelperClient {
     }
 
     func restoreAllToAuto() async {
-        guard !disabled, service.status == .enabled else { return }
+        guard !disabled, serviceStatus == .enabled else { return }
         let _: Bool? = try? await perform { proxy, complete in
             proxy.restoreAllFansToAuto { restored, _ in complete(.success(restored)) }
         }
@@ -137,11 +157,18 @@ actor XPCPrivilegedHelperClient: PrivilegedFanHelperClient {
     }
 
     private func activeConnection() throws -> NSXPCConnection {
-        guard !disabled, service.status == .enabled else {
+        guard !disabled else {
+            currentStatus = .unavailable
+            throw ThermalControlError.unavailable("Privileged helper is not enabled")
+        }
+        // A live connection is its own proof that the helper is enabled, and asking the background-task
+        // daemon costs a synchronous round trip on every single call. Interruption and invalidation already
+        // drop the connection, so the registration state only has to be consulted when there is none to reuse.
+        if let connection { return connection }
+        guard serviceStatus == .enabled else {
             currentStatus = mappedServiceStatus
             throw ThermalControlError.unavailable("Privileged helper is not enabled")
         }
-        if let connection { return connection }
         let connection = NSXPCConnection(machServiceName: thermalHelperMachService, options: .privileged)
         let connectionID = ObjectIdentifier(connection)
         connection.remoteObjectInterface = HelperXPCInterface.make()
@@ -165,11 +192,13 @@ actor XPCPrivilegedHelperClient: PrivilegedFanHelperClient {
         guard let connection, ObjectIdentifier(connection) == connectionID else { return }
         self.connection = nil
         currentStatus = .unavailable
+        // The helper may have gone away entirely, so do not trust the cached registration state again.
+        cachedServiceStatus = nil
         connection.invalidate()
     }
 
     private var mappedServiceStatus: HelperStatus {
-        switch service.status {
+        switch serviceStatus {
         case .enabled: .healthy
         case .requiresApproval: .requiresApproval
         case .notFound: .unavailable

@@ -7,17 +7,42 @@ struct BalancedGrid: Layout {
     var minItemWidth: CGFloat
     var spacing: CGFloat = Dashboard.spacing
 
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+    /// Measuring every subview is by far the expensive part, and one layout pass asks for the size and then
+    /// places the items, which measured everything twice. Holding the metrics between those two halves makes
+    /// the second one free; SwiftUI resets the cache whenever the subviews change.
+    struct Cache {
+        var key: Key?
+        var metrics: Metrics?
+    }
+
+    struct Key: Equatable {
+        var width: CGFloat
+        var count: Int
+        var minItemWidth: CGFloat
+        var spacing: CGFloat
+    }
+
+    struct Metrics {
+        var columns: Int
+        var itemWidth: CGFloat
+        var rowHeights: [CGFloat]
+    }
+
+    func makeCache(subviews: Subviews) -> Cache { Cache() }
+
+    func updateCache(_ cache: inout Cache, subviews: Subviews) { cache = Cache() }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Cache) -> CGSize {
         guard !subviews.isEmpty else { return .zero }
         let width = proposal.width ?? minItemWidth * CGFloat(subviews.count) + spacing * CGFloat(subviews.count - 1)
-        let metrics = metrics(width: width, subviews: subviews)
+        let metrics = metrics(width: width, subviews: subviews, cache: &cache)
         let height = metrics.rowHeights.reduce(0, +) + spacing * CGFloat(max(metrics.rowHeights.count - 1, 0))
         return CGSize(width: width, height: height)
     }
 
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Cache) {
         guard !subviews.isEmpty else { return }
-        let metrics = metrics(width: bounds.width, subviews: subviews)
+        let metrics = metrics(width: bounds.width, subviews: subviews, cache: &cache)
         var y = bounds.minY
         for (row, rowHeight) in metrics.rowHeights.enumerated() {
             for column in 0..<metrics.columns {
@@ -33,7 +58,16 @@ struct BalancedGrid: Layout {
         }
     }
 
-    private func metrics(width: CGFloat, subviews: Subviews) -> (columns: Int, itemWidth: CGFloat, rowHeights: [CGFloat]) {
+    private func metrics(width: CGFloat, subviews: Subviews, cache: inout Cache) -> Metrics {
+        let key = Key(width: width, count: subviews.count, minItemWidth: minItemWidth, spacing: spacing)
+        if cache.key == key, let cached = cache.metrics { return cached }
+        let computed = computedMetrics(width: width, subviews: subviews)
+        cache.key = key
+        cache.metrics = computed
+        return computed
+    }
+
+    private func computedMetrics(width: CGFloat, subviews: Subviews) -> Metrics {
         let count = subviews.count
         let fitting = max(1, Int((width + spacing) / (minItemWidth + spacing)))
         let rows = Int((Double(count) / Double(min(fitting, count))).rounded(.up))
@@ -44,6 +78,6 @@ struct BalancedGrid: Layout {
                 .map { $0.sizeThatFits(ProposedViewSize(width: itemWidth, height: nil)).height }
                 .max() ?? 0
         }
-        return (columns, itemWidth, rowHeights)
+        return Metrics(columns: columns, itemWidth: itemWidth, rowHeights: rowHeights)
     }
 }

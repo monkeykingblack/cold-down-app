@@ -82,8 +82,15 @@ struct DashboardCard<Content: View>: View {
         content
             .padding(padding)
             .frame(maxWidth: .infinity, maxHeight: fillHeight ? .infinity : nil, alignment: .topLeading)
-            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: Dashboard.cornerRadius, style: .continuous))
-            .shadow(color: .black.opacity(0.04), radius: 3, y: 1)
+            // The shadow hangs off the background shape, not off the card as a whole. Shadowing the card made
+            // SwiftUI rasterize its contents offscreen on every value change, which a profile showed as
+            // CoreAnimation `make_cgimage` work; the drawn result is the same, because the opaque background
+            // is what defines the silhouette.
+            .background {
+                RoundedRectangle(cornerRadius: Dashboard.cornerRadius, style: .continuous)
+                    .fill(Color(nsColor: .controlBackgroundColor))
+                    .shadow(color: .black.opacity(0.04), radius: 3, y: 1)
+            }
             .overlay(
                 RoundedRectangle(cornerRadius: Dashboard.cornerRadius, style: .continuous)
                     .strokeBorder(Color.primary.opacity(0.06))
