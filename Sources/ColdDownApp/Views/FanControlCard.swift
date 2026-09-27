@@ -92,7 +92,7 @@ struct FanControlCard: View {
                     Text(model.fan.currentSpeed.map { $0.formatted() } ?? "—")
                         .font(.system(size: 17, weight: .semibold, design: .rounded))
                         .monospacedDigit()
-                        .numericTransition(value: model.fan.currentSpeed.map(Double.init), animated: true)
+                        .numericTransition(value: model.fan.currentSpeed.map(Double.init))
                     Text(unit).font(.caption2).foregroundStyle(.secondary)
                 }
                 .fixedSize()

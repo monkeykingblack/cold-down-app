@@ -34,7 +34,7 @@ struct MenuBarContentView: View {
                         .foregroundStyle(Dashboard.temperatureColor(hottest))
                         .lineLimit(1)
                         .fixedSize()
-                        .numericTransition(value: hottest, animated: true)
+                        .numericTransition(value: hottest)
                         .accessibilityIdentifier(AccessibilityID.menuBarHottest)
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Hottest").font(.caption.weight(.semibold))
@@ -142,7 +142,7 @@ private struct MenuBarFanRow: View {
                                 .font(.caption2)
                                 .monospacedDigit()
                                 .foregroundStyle(.secondary)
-                                .numericTransition(value: fan.currentSpeed.map(Double.init), animated: true)
+                                .numericTransition(value: fan.currentSpeed.map(Double.init))
                             if let activity = Dashboard.activity(
                                 fan: fan, profile: model.snapshot.profiles[fan.id], decision: model.snapshot.lastDecision
                             ) {

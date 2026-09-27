@@ -171,7 +171,7 @@ struct TemperatureGauge: View {
             .minimumScaleFactor(0.6)
             .lineLimit(1)
             .padding(.horizontal, lineWidth)
-            .numericTransition(value: celsius, animated: true)
+            .numericTransition(value: celsius)
         if let valueIdentifier {
             text.accessibilityIdentifier(valueIdentifier)
         } else {
@@ -273,7 +273,7 @@ struct StatChip: View {
                 .foregroundStyle(celsius == nil ? .secondary : .primary)
                 .lineLimit(1)
                 .fixedSize()
-                .numericTransition(value: celsius, animated: true)
+                .numericTransition(value: celsius)
         }
         .accessibilityElement(children: .combine)
     }
@@ -314,15 +314,10 @@ struct TemperatureBar: View {
 }
 
 extension View {
-    /// Rolls digits smoothly when a numeric value changes.
-    ///
-    /// Off by default, and deliberately so. Every reading changes on each refresh, so switching this on for a
-    /// repeated row means dozens of springs animating at once, a couple of seconds apart, for as long as the
-    /// window is open; measured over a 15 s window that was the difference between 36% and 4% of a core on the
-    /// Sensors tab. It is worth it on the handful of headline figures and nowhere else.
+    /// Rolls digits smoothly when a numeric value changes, if `Dashboard.valueAnimation` is on.
     @ViewBuilder
-    func numericTransition(value: Double?, animated: Bool = false) -> some View {
-        if animated, Dashboard.valueAnimation != nil {
+    func numericTransition(value: Double?) -> some View {
+        if Dashboard.valueAnimation != nil {
             self.contentTransition(.numericText(value: value ?? 0))
                 .animation(Dashboard.valueAnimation, value: value)
         } else {

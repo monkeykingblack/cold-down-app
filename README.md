@@ -9,11 +9,12 @@ Platform handling follows [Stats](https://github.com/exelban/stats) (chip-specif
 ## Interface
 
 - **Fixed window** (560 × 460, not resizable) with a tab bar in the title bar: **Overview · Fans · Sensors · Settings** (⌘1–⌘4 in the View menu).
-- **Overview**: hottest temperature with gauge, CPU/GPU/average, a five-minute chart, one card per fan, and one row per sensor group.
+- **Overview**: hottest temperature with gauge, CPU/GPU/average, a five-minute chart, one card per fan, and a row per sensor group. The group rows take whatever height the cards above leave them and flow into a second or third column when that is not enough, so a Mac with two built-in fans (one fan row more than a single-fan Mac) still fits the window.
 - **Fans**: one full-width card per fan. Status row (speed ring, name, live RPM, chart, Auto/Manual) with that mode's controls inline. Auto has the temperature source and boost threshold; Manual has the target slider with Min/Quiet/Balanced/Max presets. Both modes are the same height.
 - **Sensors**: summary cards plus one collapsible card per group (count, average, max), each holding a grid of sensor tiles. Collapsed groups are remembered.
 - **Menu-bar popover**: hottest temperature, CPU/GPU, chart, and a row per fan with a mode switch; Open Cold Down (⌘O), Settings (⌘,) and Quit (⌘Q).
 - **Notices**: problems (critical temperature, safety fallback, helper needs approval, recovery after a crash) appear as a coloured icon in the title bar and popover. Clicking it shows the message, an action, and Dismiss where dismissing is allowed. Nothing in the layout shifts.
+- **Smooth value animations** (**Settings › General**, off by default): rolls the digits, sweeps the gauge and eases the bars as readings change. Every reading changes on each refresh, so turning it on animates most of the window continuously; measured on an Intel Mac that is the difference between about 4% and 36% of a core on the Sensors tab.
 - **Icons**: static Dock icon; the menu-bar fan is tinted by temperature, or monochrome (**Settings › General › Menu bar icon**). Regenerate the app icon with `swift Scripts/generate-app-icon.swift`; `Design/AppIcon/fan-layer-1024.png` is the transparent fan layer for building a layered (Liquid Glass) icon in Icon Composer.
 
 Closing the main window keeps Cold Down monitoring from the menu bar and removes its Dock icon.

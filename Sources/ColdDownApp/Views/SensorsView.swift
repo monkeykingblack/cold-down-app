@@ -70,7 +70,7 @@ struct SensorsView: View {
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(Dashboard.temperatureColor(value))
-                    .numericTransition(value: value, animated: true)
+                    .numericTransition(value: value)
                 TemperatureBar(celsius: value)
             }
             .accessibilityElement(children: .combine)
@@ -176,7 +176,7 @@ private struct SensorTile: View {
                     .monospacedDigit()
                     .foregroundStyle(reading.isValid ? .primary : .secondary)
                     .fixedSize()
-                    .numericTransition(value: reading.valueCelsius, animated: true)
+                    .numericTransition(value: reading.valueCelsius)
             }
             TemperatureBar(celsius: reading.isValid ? reading.valueCelsius : nil)
         }
