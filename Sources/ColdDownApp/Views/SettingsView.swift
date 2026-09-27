@@ -47,7 +47,7 @@ struct SettingsView: View {
                         )
                     }
                     Divider()
-                    row("Refresh interval", "2 seconds balances freshness and overhead.") {
+                    row("Refresh interval", "5 seconds keeps the app close to idle. Lower it to see the numbers move sooner; every reading redraws on each refresh.") {
                         Picker("Refresh interval", selection: Binding(
                             get: { Int(model.preferences.refreshInterval) },
                             set: { value in model.updatePreferences { $0.refreshInterval = TimeInterval(value) } }

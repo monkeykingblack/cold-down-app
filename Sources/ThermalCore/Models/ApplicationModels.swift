@@ -16,7 +16,7 @@ public struct AppPreferences: Codable, Equatable, Sendable {
     public init(
         schemaVersion: Int = AppPreferences.schemaVersion,
         profiles: [String: FanProfile] = [:],
-        refreshInterval: TimeInterval = 2,
+        refreshInterval: TimeInterval = 5,
         showTemperatureInMenuBar: Bool = true,
         launchAtLogin: Bool = false,
         automaticFlydigiReconnect: Bool = true

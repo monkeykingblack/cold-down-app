@@ -89,7 +89,8 @@ final class AppModel {
     /// Notices the user dismissed this session (by message identity).
     private(set) var dismissedBanners: Set<String> = []
     private let sessionMarker = SessionMarker()
-    /// Recent hottest-temperature and per-fan speed samples for dashboard sparklines (about 5 minutes at 2 s).
+    /// Recent hottest-temperature and per-fan speed samples for dashboard sparklines. The span follows the
+    /// refresh interval — 150 samples is about 12 minutes at the default 5 s — and the chart says which.
     private(set) var temperatureHistory: [Double] = []
     private(set) var fanSpeedHistory: [String: [Double]] = [:]
     static let historyLength = 150

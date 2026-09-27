@@ -9,7 +9,7 @@ Platform handling follows [Stats](https://github.com/exelban/stats) (chip-specif
 ## Interface
 
 - **Fixed window** (560 × 460, not resizable) with a tab bar in the title bar: **Overview · Fans · Sensors · Settings** (⌘1–⌘4 in the View menu).
-- **Overview**: hottest temperature with gauge, CPU/GPU/average, a five-minute chart, one card per fan, and a row per sensor group. The group rows take whatever height the cards above leave them and flow into a second or third column when that is not enough, so a Mac with two built-in fans (one fan row more than a single-fan Mac) still fits the window.
+- **Overview**: hottest temperature with gauge, CPU/GPU/average, a recent-history chart (about twelve minutes at the default five-second refresh, and it says how long), one card per fan, and a row per sensor group. The group rows take whatever height the cards above leave them and flow into a second or third column when that is not enough, so a Mac with two built-in fans (one fan row more than a single-fan Mac) still fits the window.
 - **Fans**: one full-width card per fan. Status row (speed ring, name, live RPM, chart, Auto/Manual) with that mode's controls inline. Auto has the temperature source and boost threshold; Manual has the target slider with Min/Quiet/Balanced/Max presets. Both modes are the same height.
 - **Sensors**: summary cards plus one collapsible card per group (count, average, max), each holding a grid of sensor tiles. Collapsed groups are remembered.
 - **Menu-bar popover**: hottest temperature, CPU/GPU, chart, and a row per fan with a mode switch; Open Cold Down (⌘O), Settings (⌘,) and Quit (⌘Q).
