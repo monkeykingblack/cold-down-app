@@ -75,7 +75,10 @@ private struct SegmentStyle: ButtonStyle {
                 .contentShape(Capsule())
                 .scaleEffect(configuration.isPressed ? 0.97 : 1)
                 .animation(.easeOut(duration: 0.12), value: hovering)
-                .animation(.easeOut(duration: 0.15), value: selected)
+                // The selection itself is not animated. Crossfading it took 150 ms during which the old
+                // segment had faded and the new one had not arrived, so both read as grey: the click looked
+                // like it had been swallowed even though the page behind had already changed. Hover keeps its
+                // fade, since nothing is waiting on it.
                 .onHover { hovering = $0 }
         }
 
