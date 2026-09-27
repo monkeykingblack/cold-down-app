@@ -4,7 +4,7 @@ Normal automated tests require neither physical hardware nor an installed helper
 
 ## Prerequisites
 
-- macOS 13 or later.
+- macOS 14 or later.
 - Xcode with the macOS SDK and command-line tools selected.
 - Intel hardware for physical AppleSMC monitoring and built-in fan write validation.
 - Apple Silicon or Intel hardware for the native UI, mock mode, persistence, policy tests, and Flydigi discovery.
@@ -23,7 +23,7 @@ xcodebuild -project ThermalControl.xcodeproj \
   build
 ```
 
-Expected: both the app and embedded helper contain native `arm64` and `x86_64` slices and target macOS 13. Signing-disabled builds stay read-only for built-in fan control.
+Expected: both the app and embedded helper contain native `arm64` and `x86_64` slices and target macOS 14. Signing-disabled builds stay read-only for built-in fan control.
 
 ## Prove the Intel slices explicitly
 
@@ -105,7 +105,7 @@ Scripts/validate-distribution.sh \
   /private/tmp/ColdDown-Unsigned.xcarchive
 ```
 
-The validator checks macOS 13 metadata, both architecture slices, helper and launch-daemon placement, resolved identifiers/Mach service, and helper-first/app-last ad-hoc signability on a temporary copy. It does not claim Developer ID or notarization success.
+The validator checks macOS 14 metadata, both architecture slices, helper and launch-daemon placement, resolved identifiers/Mach service, and helper-first/app-last ad-hoc signability on a temporary copy. It does not claim Developer ID or notarization success.
 
 For a credentialed archive:
 

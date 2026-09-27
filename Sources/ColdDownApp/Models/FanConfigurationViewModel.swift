@@ -4,12 +4,13 @@ import ThermalCore
 /// Holds the user's draft settings for one fan. The device state itself is refreshed from each snapshot
 /// via `updateFan(_:)`, so connection, speed, limits, and write availability never go stale.
 @MainActor
-final class FanConfigurationViewModel: ObservableObject {
-    @Published private(set) var fan: FanDeviceState
-    @Published var mode: FanControlMode
-    @Published var selectedSensor: SensorSelection
-    @Published var threshold: Double
-    @Published var manualTarget: Double
+@Observable
+final class FanConfigurationViewModel {
+    private(set) var fan: FanDeviceState
+    var mode: FanControlMode
+    var selectedSensor: SensorSelection
+    var threshold: Double
+    var manualTarget: Double
 
     init(fan: FanDeviceState, profile: FanProfile) {
         self.fan = fan

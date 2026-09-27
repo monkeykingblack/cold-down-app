@@ -6,7 +6,7 @@ import ThermalCore
 struct SettingsView: View {
     private static let refreshIntervals = [1, 2, 5, 10, 15, 30]
 
-    @EnvironmentObject private var model: AppModel
+    @Environment(AppModel.self) private var model
     @AppStorage(Dashboard.smoothAnimationsKey) private var smoothAnimations = false
 
     var body: some View {
@@ -41,7 +41,7 @@ struct SettingsView: View {
                         PillSegmentedControl(
                             label: "Menu bar icon",
                             options: [.init(value: true, title: "Colorful"), .init(value: false, title: "Monochrome")],
-                            selection: $model.colorfulMenuBarIcon,
+                            selection: Binding(get: { model.colorfulMenuBarIcon }, set: { model.colorfulMenuBarIcon = $0 }),
                             size: .small,
                             identifier: "thermal.settings.menubaricon"
                         )

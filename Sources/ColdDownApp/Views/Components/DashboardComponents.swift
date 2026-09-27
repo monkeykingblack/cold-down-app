@@ -314,7 +314,7 @@ struct TemperatureBar: View {
 }
 
 extension View {
-    /// Rolls digits smoothly when a numeric value changes (macOS 14+); a no-op on macOS 13.
+    /// Rolls digits smoothly when a numeric value changes.
     ///
     /// Off by default, and deliberately so. Every reading changes on each refresh, so switching this on for a
     /// repeated row means dozens of springs animating at once, a couple of seconds apart, for as long as the
@@ -322,7 +322,7 @@ extension View {
     /// Sensors tab. It is worth it on the handful of headline figures and nowhere else.
     @ViewBuilder
     func numericTransition(value: Double?, animated: Bool = false) -> some View {
-        if animated, Dashboard.valueAnimation != nil, #available(macOS 14.0, *) {
+        if animated, Dashboard.valueAnimation != nil {
             self.contentTransition(.numericText(value: value ?? 0))
                 .animation(Dashboard.valueAnimation, value: value)
         } else {

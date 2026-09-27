@@ -7,8 +7,8 @@ struct FanControlCard: View {
     /// Short: this only groups keystrokes and drag ticks. The real "end of action" debounce lives in AppModel.
     private static let commitDelay: Duration = .milliseconds(150)
 
-    @EnvironmentObject private var appModel: AppModel
-    @StateObject private var model: FanConfigurationViewModel
+    @Environment(AppModel.self) private var appModel
+    @State private var model: FanConfigurationViewModel
     @State private var pendingCommit: Task<Void, Never>?
     @State private var editing = false
     private let fanID: String
@@ -17,7 +17,15 @@ struct FanControlCard: View {
     init(fan: FanDeviceState, profile: FanProfile, highlighted: Bool = false) {
         fanID = fan.id
         self.highlighted = highlighted
-        _model = StateObject(wrappedValue: FanConfigurationViewModel(fan: fan, profile: profile))
+        _model = State(initialValue: FanConfigurationViewModel(fan: fan, profile: profile))
+    }
+
+    private var modeBinding: Binding<FanControlMode> {
+        Binding(get: { model.mode }, set: { model.mode = $0 })
+    }
+
+    private var sensorBinding: Binding<SensorSelection> {
+        Binding(get: { model.selectedSensor }, set: { model.selectedSensor = $0 })
     }
 
     private var liveFan: FanDeviceState? { appModel.snapshot.fans.first { $0.id == fanID } }
@@ -89,9 +97,9 @@ struct FanControlCard: View {
                 }
                 .fixedSize()
             }
-            PillSegmentedControl.fanMode($model.mode, fanName: model.fan.name, identifier: AccessibilityID.fanMode(fanID))
+            PillSegmentedControl.fanMode(modeBinding, fanName: model.fan.name, identifier: AccessibilityID.fanMode(fanID))
                 .disabled(!model.controlsEnabled)
-            .onChange(of: model.mode) { _ in commitNow() }
+            .onChange(of: model.mode) { _, _ in commitNow() }
         }
     }
 
@@ -232,7 +240,7 @@ struct FanControlCard: View {
     }
 
     private var sensorPicker: some View {
-        Picker("Temperature source", selection: $model.selectedSensor) {
+        Picker("Temperature source", selection: sensorBinding) {
             ForEach(CalculatedSensorKind.allCases, id: \.self) { kind in
                 Text(kind.displayName).tag(SensorSelection.calculated(kind))
             }

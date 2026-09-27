@@ -4,7 +4,7 @@ import ThermalCore
 
 /// Tabbed main window: a custom tab bar in the title bar (⌘1–⌘4 live in the View menu, see ColdDownApp).
 struct RootView: View {
-    @EnvironmentObject private var model: AppModel
+    @Environment(AppModel.self) private var model
     /// SwiftUI keeps a `Window` scene's content alive after its window closes, and the model publishes every
     /// couple of seconds, so the whole page went on laying out and animating with nothing on screen — about a
     /// fifth of a core, measured. Dropping the content while the window is away leaves just the menu bar.
@@ -40,6 +40,12 @@ struct RootView: View {
         .task { model.start() }
     }
 
+    /// `@Observable` models hand out bindings through `@Bindable`, which does not sit well inside a
+    /// `@ToolbarContentBuilder`; writing the binding out is plainer than restructuring the toolbar.
+    private var destinationBinding: Binding<AppTab> {
+        Binding(get: { model.destination }, set: { model.destination = $0 })
+    }
+
     @ViewBuilder
     private var destination: some View {
         switch model.destination {
@@ -58,13 +64,13 @@ struct RootView: View {
         // needs a compile-time gate too: older SDKs (Xcode 16 and earlier) do not declare the symbol at all.
         #if compiler(>=6.2)
         if #available(macOS 26.0, *) {
-            ToolbarItem(placement: .principal) { TabBar(selection: $model.destination) }
+            ToolbarItem(placement: .principal) { TabBar(selection: destinationBinding) }
                 .sharedBackgroundVisibility(.hidden)
         } else {
-            ToolbarItem(placement: .principal) { TabBar(selection: $model.destination) }
+            ToolbarItem(placement: .principal) { TabBar(selection: destinationBinding) }
         }
         #else
-        ToolbarItem(placement: .principal) { TabBar(selection: $model.destination) }
+        ToolbarItem(placement: .principal) { TabBar(selection: destinationBinding) }
         #endif
         ToolbarItem(placement: .primaryAction) { notice }
     }

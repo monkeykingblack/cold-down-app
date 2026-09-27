@@ -4,7 +4,7 @@ import ThermalCore
 /// The menu-bar popover, styled as a compact version of the dashboard.
 /// Rendered with `.menuBarExtraStyle(.window)` so it updates live while open.
 struct MenuBarContentView: View {
-    @EnvironmentObject private var model: AppModel
+    @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -114,7 +114,7 @@ struct MenuBarContentView: View {
 }
 
 private struct MenuBarFanRow: View {
-    @EnvironmentObject private var model: AppModel
+    @Environment(AppModel.self) private var model
     let fan: FanDeviceState
     let history: [Double]
 

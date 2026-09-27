@@ -9,11 +9,12 @@ extension SMAppService: @retroactive @unchecked Sendable {}
 #endif
 
 @MainActor
-final class HelperRegistrationService: ObservableObject {
+@Observable
+final class HelperRegistrationService {
     static let autoRegistrationAttemptedKey = "ColdDown.helperAutoRegistrationAttempted"
 
-    @Published private(set) var status: HelperStatus = .notRegistered
-    @Published private(set) var errorMessage: String?
+    private(set) var status: HelperStatus = .notRegistered
+    private(set) var errorMessage: String?
     private let service = SMAppService.daemon(plistName: "ColdDownHelper.plist")
     private let defaults: UserDefaults
 

@@ -31,7 +31,7 @@ struct ColdDownApplication: App {
     var body: some Scene {
         Window("Cold Down", id: AppModel.mainWindowID) {
             RootView()
-                .environmentObject(appDelegate.model)
+                .environment(appDelegate.model)
         }
         .windowResizability(.contentSize)
         // The tabs replace the title; hiding it keeps them from being pushed into the toolbar overflow menu.
@@ -49,16 +49,16 @@ struct ColdDownApplication: App {
         }
 
         MenuBarExtra {
-            MenuBarContentView().environmentObject(appDelegate.model)
+            MenuBarContentView().environment(appDelegate.model)
         } label: {
-            MenuBarLabel().environmentObject(appDelegate.model)
+            MenuBarLabel().environment(appDelegate.model)
         }
         .menuBarExtraStyle(.window)
     }
 }
 
 private struct MenuBarLabel: View {
-    @EnvironmentObject private var model: AppModel
+    @Environment(AppModel.self) private var model
 
     var body: some View {
         let presentation = MenuBarPresentation(

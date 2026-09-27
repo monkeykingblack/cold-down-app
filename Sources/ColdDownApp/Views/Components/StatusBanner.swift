@@ -79,7 +79,7 @@ struct StatusBanner: Equatable {
 
 /// Top-right toolbar icon that only exists while there is a message; clicking it shows the message in a popover.
 struct NoticeToolbarButton: View {
-    @EnvironmentObject private var model: AppModel
+    @Environment(AppModel.self) private var model
     let banner: StatusBanner
     var openSettings: () -> Void
     @State private var showing = false

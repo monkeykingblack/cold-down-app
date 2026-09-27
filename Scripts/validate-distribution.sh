@@ -22,7 +22,7 @@ done
 
 /usr/bin/plutil -lint "$info_plist" "$daemon_plist"
 minimum_os=$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$info_plist")
-[[ "$minimum_os" == "13.0" ]] || { echo "Expected macOS 13.0 minimum, found $minimum_os" >&2; exit 65; }
+[[ "$minimum_os" == "14.0" ]] || { echo "Expected macOS 14.0 minimum, found $minimum_os" >&2; exit 65; }
 
 normalize_archs() { printf '%s\n' "$1" | tr ' ' '\n' | sort | tr '\n' ' ' | sed 's/ $//'; }
 expected=$(normalize_archs "$expected_architectures")

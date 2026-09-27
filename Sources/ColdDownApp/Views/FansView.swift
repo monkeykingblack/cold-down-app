@@ -4,7 +4,7 @@ import IntelSMC
 
 /// Every fan as its own full-width card with its controls inline; nothing to select.
 struct FansView: View {
-    @EnvironmentObject private var model: AppModel
+    @Environment(AppModel.self) private var model
     @State private var highlightedFanID: String?
 
     var body: some View {
@@ -31,7 +31,7 @@ struct FansView: View {
             }
             .background(Color(nsColor: .windowBackgroundColor))
             .onAppear { reveal(model.selectedFanID, with: proxy) }
-            .onChange(of: model.selectedFanID) { reveal($0, with: proxy) }
+            .onChange(of: model.selectedFanID) { _, fanID in reveal(fanID, with: proxy) }
         }
     }
 

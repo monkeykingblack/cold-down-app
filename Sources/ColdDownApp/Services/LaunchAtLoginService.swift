@@ -2,10 +2,11 @@ import Foundation
 import ServiceManagement
 
 @MainActor
-final class LaunchAtLoginService: ObservableObject {
-    @Published private(set) var enabled = SMAppService.mainApp.status == .enabled
-    @Published private(set) var requiresApproval = SMAppService.mainApp.status == .requiresApproval
-    @Published private(set) var errorMessage: String?
+@Observable
+final class LaunchAtLoginService {
+    private(set) var enabled = SMAppService.mainApp.status == .enabled
+    private(set) var requiresApproval = SMAppService.mainApp.status == .requiresApproval
+    private(set) var errorMessage: String?
 
     func setEnabled(_ value: Bool) {
         errorMessage = nil

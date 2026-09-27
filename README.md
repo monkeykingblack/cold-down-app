@@ -1,6 +1,6 @@
 # Cold Down
 
-Cold Down is a native SwiftUI macOS utility for thermal monitoring and safe cooling control. It is a universal `arm64`/`x86_64` app for macOS 13 or later, reads temperatures and fans through AppleSMC on both Intel and Apple Silicon Macs, and can control a Flydigi BS-series cooler over HID.
+Cold Down is a native SwiftUI macOS utility for thermal monitoring and safe cooling control. It is a universal `arm64`/`x86_64` app for macOS 14 or later, reads temperatures and fans through AppleSMC on both Intel and Apple Silicon Macs, and can control a Flydigi BS-series cooler over HID.
 
 The app is useful without its privileged helper: temperatures and fan speeds are read without root, and only built-in fan *writes* live in a narrowly scoped launch daemon.
 

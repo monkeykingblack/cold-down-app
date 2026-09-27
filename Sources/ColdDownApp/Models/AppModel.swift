@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import Combine
 import Foundation
 import ThermalCore
 import IntelSMC
@@ -74,42 +73,44 @@ enum HelperDisplayStatus: Equatable {
 }
 
 @MainActor
-final class AppModel: ObservableObject {
+@Observable
+final class AppModel {
     static let mainWindowID = "main"
     /// The main window is not resizable; every page is laid out for this size.
     static let windowSize = CGSize(width: 560, height: 460)
 
-    @Published private(set) var snapshot = CoolingSnapshot.empty
-    @Published var preferences = AppPreferences.defaults
-    @Published var destination: AppTab = .overview
-    @Published var selectedFanID: String?
-    @Published private(set) var isReady = false
+    private(set) var snapshot = CoolingSnapshot.empty
+    var preferences = AppPreferences.defaults
+    var destination: AppTab = .overview
+    var selectedFanID: String?
+    private(set) var isReady = false
     /// True after launching from an unclean exit that reverted Manual profiles to Auto (until dismissed).
-    @Published var recoveredFromUncleanExit = false
+    var recoveredFromUncleanExit = false
     /// Notices the user dismissed this session (by message identity).
-    @Published private(set) var dismissedBanners: Set<String> = []
+    private(set) var dismissedBanners: Set<String> = []
     private let sessionMarker = SessionMarker()
     /// Recent hottest-temperature and per-fan speed samples for dashboard sparklines (about 5 minutes at 2 s).
-    @Published private(set) var temperatureHistory: [Double] = []
-    @Published private(set) var fanSpeedHistory: [String: [Double]] = [:]
+    private(set) var temperatureHistory: [Double] = []
+    private(set) var fanSpeedHistory: [String: [Double]] = [:]
     static let historyLength = 150
     /// Profile edits (mode switches, presets, slider releases) are shown at once but sent to the hardware only
     /// after this much quiet time, and only the final state: quick Auto ↔ Manual flips never start a takeover.
     static let profileCommitDelay: Duration = .milliseconds(500)
-    private var pendingProfiles: [String: FanProfile] = [:]
-    private var profileCommitTask: Task<Void, Never>?
+    @ObservationIgnored private var pendingProfiles: [String: FanProfile] = [:]
+    @ObservationIgnored private var profileCommitTask: Task<Void, Never>?
 
     let helperRegistration = HelperRegistrationService()
     static let colorfulMenuBarIconKey = "ColdDown.colorfulMenuBarIcon"
     /// Stored outside `AppPreferences` so older saved preferences keep decoding.
-    @Published var colorfulMenuBarIcon = UserDefaults.standard.object(forKey: AppModel.colorfulMenuBarIconKey) as? Bool ?? true {
+    var colorfulMenuBarIcon = UserDefaults.standard.object(forKey: AppModel.colorfulMenuBarIconKey) as? Bool ?? true {
         didSet { UserDefaults.standard.set(colorfulMenuBarIcon, forKey: Self.colorfulMenuBarIconKey) }
     }
     let launchAtLogin = LaunchAtLoginService()
     private let coordinator: CoolingCoordinator
     private let usesMockHelper: Bool
-    private var snapshotTask: Task<Void, Never>?
-    private var nestedObservers: Set<AnyCancellable> = []
+    /// Cancelled from `deinit`, which is nonisolated. A `Task` handle is `Sendable` and cancellation is safe
+    /// from any thread; nothing else touches this from off the main actor.
+    @ObservationIgnored private nonisolated(unsafe) var snapshotTask: Task<Void, Never>?
 
     init() {
         if LaunchOption.mockMode {
@@ -155,12 +156,8 @@ final class AppModel: ObservableObject {
             )
             usesMockHelper = false
         }
-        // Nested ObservableObjects do not propagate changes on their own.
-        for publisher in [helperRegistration.objectWillChange, launchAtLogin.objectWillChange] {
-            publisher.sink { [weak self] _ in
-                MainActor.assumeIsolated { self?.objectWillChange.send() }
-            }.store(in: &nestedObservers)
-        }
+        // `@Observable` tracks the nested services' properties through the views that read them, so the
+        // change forwarding this used to need is gone.
     }
 
     deinit { snapshotTask?.cancel() }

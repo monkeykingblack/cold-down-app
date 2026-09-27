@@ -3,7 +3,7 @@ import ThermalCore
 
 /// Summary cards, then one collapsible section per sensor group with a compact grid of sensor tiles.
 struct SensorsView: View {
-    @EnvironmentObject private var model: AppModel
+    @Environment(AppModel.self) private var model
     /// Comma-separated group names the user collapsed; remembered across launches.
     @AppStorage("ColdDown.sensors.collapsedGroups") private var collapsedStorage = ""
 

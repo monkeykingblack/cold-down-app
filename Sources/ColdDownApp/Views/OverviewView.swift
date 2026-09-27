@@ -2,7 +2,7 @@ import SwiftUI
 import ThermalCore
 
 struct OverviewView: View {
-    @EnvironmentObject private var model: AppModel
+    @Environment(AppModel.self) private var model
 
 
     /// A fixed page, not a scroll view: everything is laid out to fit the fixed window.

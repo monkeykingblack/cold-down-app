@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "ColdDown",
-    platforms: [.macOS(.v13)],
+    platforms: [.macOS(.v14)],
     products: [
         .library(name: "ThermalCore", type: .static, targets: ["ThermalCore"]),
         .library(name: "IntelSMC", type: .static, targets: ["IntelSMC"]),
