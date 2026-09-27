@@ -7,6 +7,7 @@ struct SettingsView: View {
     private static let refreshIntervals = [1, 2, 5, 10, 15, 30]
 
     @EnvironmentObject private var model: AppModel
+    @AppStorage(Dashboard.smoothAnimationsKey) private var smoothAnimations = false
 
     var body: some View {
         ScrollView {
@@ -55,6 +56,17 @@ struct SettingsView: View {
                         }
                         .labelsHidden()
                         .fixedSize()
+                    }
+                    Divider()
+                    row(
+                        "Smooth value animations",
+                        "Sweep the gauge and roll the digits as readings change. Off keeps the app near idle: "
+                        + "every reading changes each refresh, so animating them all keeps the window drawing."
+                    ) {
+                        Toggle("Smooth value animations", isOn: $smoothAnimations)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
                     }
                     Divider()
                     row("Reconnect Flydigi automatically", "Resume control when the BS3 Pro is attached again.") {

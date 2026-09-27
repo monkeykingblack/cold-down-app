@@ -6,7 +6,18 @@ import ThermalCore
 enum Dashboard {
     static let cornerRadius: CGFloat = 10
     static let spacing: CGFloat = 10
-    static let valueAnimation = Animation.spring(response: 0.5, dampingFraction: 0.85)
+    /// Key behind **Settings › General › Smooth value animations**, read straight from defaults so every
+    /// animated site honours it without threading a preference through the view tree.
+    static let smoothAnimationsKey = "ColdDown.smoothAnimations"
+
+    /// Off by default, and that default is the point. Every reading changes on each refresh, so each change
+    /// starts a spring; across a page of rows that is the whole window animating almost continuously. Measured
+    /// over 15 s windows on an Intel Mac: Overview 24.5% of a core with them on against 5.5% off, and the
+    /// Sensors tab 36.1% against 3.9%. Anyone who wants the motion back can pay for it deliberately.
+    static var valueAnimation: Animation? {
+        UserDefaults.standard.bool(forKey: smoothAnimationsKey)
+            ? .spring(response: 0.5, dampingFraction: 0.85) : nil
+    }
 
     /// Cool teal → green → amber → red, keyed to the thresholds the policy cares about.
     static func temperatureColor(_ celsius: Double?) -> Color {
@@ -185,6 +196,7 @@ struct SpeedRing: View {
                 .trim(from: 0, to: fraction ?? 0)
                 .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
+                .animation(Dashboard.valueAnimation, value: fraction ?? 0)
         }
         .opacity(fraction == nil ? 0.4 : 1)
         .accessibilityHidden(true)
@@ -261,7 +273,7 @@ struct StatChip: View {
                 .foregroundStyle(celsius == nil ? .secondary : .primary)
                 .lineLimit(1)
                 .fixedSize()
-                .numericTransition(value: celsius)
+                .numericTransition(value: celsius, animated: true)
         }
         .accessibilityElement(children: .combine)
     }
@@ -293,6 +305,7 @@ struct TemperatureBar: View {
                 Capsule()
                     .fill(Dashboard.temperatureColor(celsius))
                     .frame(width: geometry.size.width * fraction)
+                    .animation(Dashboard.valueAnimation, value: fraction)
             }
         }
         .frame(height: 4)
@@ -309,7 +322,7 @@ extension View {
     /// Sensors tab. It is worth it on the handful of headline figures and nowhere else.
     @ViewBuilder
     func numericTransition(value: Double?, animated: Bool = false) -> some View {
-        if animated, #available(macOS 14.0, *) {
+        if animated, Dashboard.valueAnimation != nil, #available(macOS 14.0, *) {
             self.contentTransition(.numericText(value: value ?? 0))
                 .animation(Dashboard.valueAnimation, value: value)
         } else {

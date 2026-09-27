@@ -188,7 +188,7 @@ private struct SensorGroupRow: View {
                 .monospacedDigit()
                 .foregroundStyle(Dashboard.temperatureColor(reading?.valueCelsius))
                 .frame(width: compact ? 52 : 58, alignment: .trailing)
-                .numericTransition(value: reading?.valueCelsius)
+                .numericTransition(value: reading?.valueCelsius, animated: true)
         }
         .accessibilityElement(children: .combine)
     }
