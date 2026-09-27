@@ -222,7 +222,7 @@ struct FanCard: View {
                             Text(fan.currentSpeed.map { $0.formatted() } ?? "—")
                                 .font(.system(size: 15, weight: .semibold, design: .rounded))
                                 .monospacedDigit()
-                                .numericTransition(value: fan.currentSpeed.map(Double.init))
+                                .numericTransition(value: fan.currentSpeed.map(Double.init), animated: true)
                             Text(unit).font(.caption2).foregroundStyle(.secondary)
                         }
                         .lineLimit(1)

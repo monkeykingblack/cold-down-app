@@ -160,7 +160,7 @@ struct TemperatureGauge: View {
             .minimumScaleFactor(0.6)
             .lineLimit(1)
             .padding(.horizontal, lineWidth)
-            .numericTransition(value: celsius)
+            .numericTransition(value: celsius, animated: true)
         if let valueIdentifier {
             text.accessibilityIdentifier(valueIdentifier)
         } else {
@@ -176,6 +176,8 @@ struct SpeedRing: View {
     var tint: Color = .accentColor
     var lineWidth: CGFloat = 4
 
+    /// Unlike the single headline gauge, a speed ring is drawn once per fan and is only 32 pt across, where a
+    /// spring is barely perceptible but still animates every refresh. It snaps instead.
     var body: some View {
         ZStack {
             Circle().stroke(Color.primary.opacity(0.08), lineWidth: lineWidth)
@@ -183,7 +185,6 @@ struct SpeedRing: View {
                 .trim(from: 0, to: fraction ?? 0)
                 .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .animation(Dashboard.valueAnimation, value: fraction ?? 0)
         }
         .opacity(fraction == nil ? 0.4 : 1)
         .accessibilityHidden(true)
@@ -292,7 +293,6 @@ struct TemperatureBar: View {
                 Capsule()
                     .fill(Dashboard.temperatureColor(celsius))
                     .frame(width: geometry.size.width * fraction)
-                    .animation(Dashboard.valueAnimation, value: fraction)
             }
         }
         .frame(height: 4)
@@ -302,9 +302,14 @@ struct TemperatureBar: View {
 
 extension View {
     /// Rolls digits smoothly when a numeric value changes (macOS 14+); a no-op on macOS 13.
+    ///
+    /// Off by default, and deliberately so. Every reading changes on each refresh, so switching this on for a
+    /// repeated row means dozens of springs animating at once, a couple of seconds apart, for as long as the
+    /// window is open; measured over a 15 s window that was the difference between 36% and 4% of a core on the
+    /// Sensors tab. It is worth it on the handful of headline figures and nowhere else.
     @ViewBuilder
-    func numericTransition(value: Double?) -> some View {
-        if #available(macOS 14.0, *) {
+    func numericTransition(value: Double?, animated: Bool = false) -> some View {
+        if animated, #available(macOS 14.0, *) {
             self.contentTransition(.numericText(value: value ?? 0))
                 .animation(Dashboard.valueAnimation, value: value)
         } else {
