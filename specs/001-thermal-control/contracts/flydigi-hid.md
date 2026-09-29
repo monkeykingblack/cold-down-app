@@ -3,7 +3,7 @@
 ## Device match
 
 - Vendor ID: `0x37D7`
-- Product ID: `0x1004`
+- Product ID: `0x1004` (BS3 Pro); `0x1001`–`0x1003` (BS2, BS2 Pro, BS3) share the protocol and are matched on the same collection
 - Corroborating vendor usage page: `0xFFA0`
 - Corroborating usage: `0x00FF`
 - Product/firmware strings may refine capabilities but cannot override a vendor/product mismatch.
@@ -24,7 +24,7 @@ Fixed length: 25 bytes.
 | 5 + N | 1 | Low byte of additive sum from command through payload |
 | remaining | variable | Zero padding to 25 bytes |
 
-The decoder accepts input with or without a leading report ID, validates marker, declared length, bounds, and checksum, and preserves the command and typed payload.
+The decoder accepts input with or without a leading report ID, validates marker, declared length, bounds, and checksum, and preserves the command and typed payload. Replies arrive on input report ID `0x01`; the device also pushes `0xEF` status frames carrying the measured RPM and whether realtime mode is active, which the transport records as the latest status without treating them as acknowledgements.
 
 ## Allowed MVP commands
 
@@ -34,8 +34,9 @@ The decoder accepts input with or without a leading report ID, validates marker,
 | `0x25` query work mode | Host → device | Empty | Matching valid frame containing readable mode when supported |
 | `0x23` enter real-time RPM | Host → device | Empty | Status `0x01` success or `0x03` already active |
 | `0x21` set real-time RPM | Host → device | Little-endian UInt16 target | Status `0x01` success |
+| `0x24` leave real-time mode | Host → device | Empty | Status `0x01` success; sent only by `releaseControl` on quit so the cooler returns to its own gear |
 
-Commands `0x05` and `0x06` are explicitly forbidden. No raw send, RGB, firmware, reset, factory initialization, power, zero-speed stop, or exit-real-time API is exposed in production MVP.
+Commands `0x03`, `0x05`, and `0x06` are explicitly forbidden. No raw send, RGB, flash-writing gear, firmware, reset, factory initialization, power, or zero-speed stop API is exposed in production MVP. Realtime mode is entered once and re-entered only after the device reports it left; target writes that change by less than 50 RPM are skipped.
 
 ## Transaction rules
 

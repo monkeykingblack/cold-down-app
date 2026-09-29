@@ -1,18 +1,26 @@
 import Foundation
 import ThermalCore
 
-/// Commands Cold Down may send or understand. Protocol reference: THRM (TIANLI0/THRM), internal/deviceproto.
-/// Destructive maintenance commands (0x03 init, 0x05 clear latch, 0x06 factory reset), flash-writing gear/RGB
-/// commands, and firmware update are intentionally not representable.
+/// Commands Cold Down may send or understand. Protocol reference: THRM (TIANLI0/THRM), internal/deviceproto;
+/// 0x0D, 0x27 and 0x2A as described by Flydigi-BS and confirmed on a BS3 Pro (firmware 2.4).
+/// Destructive maintenance commands (0x03 init, 0x05/0x06, which sources describe as clear latch/factory reset or
+/// power off/on), flash-writing gear/RGB commands (including 0x26 gear speeds), and firmware update are
+/// intentionally not representable.
 public enum FlydigiCommand: UInt8, CaseIterable, Sendable {
     case firmwareVersion = 0x01
     case capabilityTier = 0x07
+    /// What the cooler does when the host sleeps; payload is a `FlydigiSleepBehavior`.
+    case setSleepBehavior = 0x0D
     case selectGear = 0x08
     case setRealtimeRPM = 0x21
     case queryRPM = 0x22
     case enterRealtimeRPM = 0x23
     case exitRealtimeRPM = 0x24
     case queryWorkMode = 0x25
+    /// Answers the four gear speeds as little-endian RPM pairs.
+    case queryGearSpeeds = 0x27
+    /// How quickly the fan ramps between speeds; payload is a `FlydigiAcceleration`.
+    case setAcceleration = 0x2A
     /// Unsolicited status frame the device pushes periodically.
     case statusPush = 0xEF
 }
@@ -23,6 +31,24 @@ public struct FlydigiFrame: Equatable, Sendable {
     public init(command: FlydigiCommand, payload: Data) {
         self.command = command
         self.payload = payload
+    }
+}
+
+/// Fan acceleration (0x2A). The device cannot report the current level, so the app remembers what it last set.
+public enum FlydigiAcceleration: UInt8, CaseIterable, Sendable {
+    case level1 = 0, level2 = 1, level3 = 2, level4 = 3
+    public var title: String { "Level \(rawValue + 1)" }
+}
+
+/// What the cooler does when the host sleeps (0x0D). Like acceleration, it cannot be read back.
+public enum FlydigiSleepBehavior: UInt8, CaseIterable, Sendable {
+    case keepRunning = 0, stopImmediately = 1, stopAfterDelay = 2
+    public var title: String {
+        switch self {
+        case .keepRunning: "Keep running"
+        case .stopImmediately: "Stop at once"
+        case .stopAfterDelay: "Stop after a delay"
+        }
     }
 }
 
@@ -107,14 +133,14 @@ public enum FlydigiPacketCodec {
     public static func acceptsAcknowledgement(_ frame: FlydigiFrame, for command: FlydigiCommand) -> Bool {
         guard frame.command == command else { return false }
         switch command {
-        case .enterRealtimeRPM, .setRealtimeRPM, .exitRealtimeRPM, .selectGear:
+        case .enterRealtimeRPM, .setRealtimeRPM, .exitRealtimeRPM, .selectGear, .setSleepBehavior, .setAcceleration:
             guard let status = frame.payload.first else { return false }
             switch command {
             case .enterRealtimeRPM: return status == 0x01 || status == 0x03
             case .exitRealtimeRPM: return status == 0x01 || status == 0x02
             default: return status == 0x01
             }
-        case .firmwareVersion, .capabilityTier, .queryRPM, .queryWorkMode, .statusPush:
+        case .firmwareVersion, .capabilityTier, .queryRPM, .queryWorkMode, .queryGearSpeeds, .statusPush:
             return true
         }
     }

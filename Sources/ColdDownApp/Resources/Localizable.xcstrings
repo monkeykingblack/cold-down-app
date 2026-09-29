@@ -30,12 +30,6 @@
     "Auto" : {
 
     },
-    "Built-in Apple Silicon fans are not exposed through the Intel SMC interface." : {
-
-    },
-    "Choose a fan to view its settings." : {
-
-    },
     "Group" : {
 
     },
@@ -51,16 +45,10 @@
     "Mode: %@" : {
 
     },
-    "No fan telemetry" : {
-
-    },
     "No temperature sensors available" : {
 
     },
     "Overview" : {
-
-    },
-    "Select a fan" : {
 
     },
     "Sensor" : {

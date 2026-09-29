@@ -3,10 +3,9 @@ import XCTest
 
 final class SessionMarkerTests: XCTestCase {
     func testDetectsUncleanExitOnlyWhenPreviousSessionNeverEnded() throws {
-        let suite = "ColdDown.SessionMarkerTests.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
-        let marker = SessionMarker(defaults: defaults)
+        let temporary = Fixtures.temporaryDefaults("ColdDown.SessionMarkerTests")
+        defer { temporary.cleanUp() }
+        let marker = SessionMarker(defaults: temporary.defaults)
 
         XCTAssertFalse(marker.begin(), "First launch ever is clean")
         XCTAssertTrue(marker.begin(), "No end() before the next launch means a crash")

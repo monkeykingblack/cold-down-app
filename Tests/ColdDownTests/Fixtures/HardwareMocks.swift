@@ -17,30 +17,6 @@ actor MockSensorProvider: SensorProvider {
     }
 }
 
-actor MockFanReader: BuiltInFanReader {
-    var fans: [FanDeviceState]
-    init(_ fans: [FanDeviceState]) { self.fans = fans }
-    func listFans() -> [FanDeviceState] { fans }
-}
-
-actor MockBuiltInController: BuiltInFanController {
-    enum Action: Equatable { case auto(String), target(String, Int), restore }
-    var fans: [FanDeviceState]
-    private(set) var actions: [Action] = []
-    let recorder: EventRecorder?
-    init(_ fans: [FanDeviceState], recorder: EventRecorder? = nil) { self.fans = fans; self.recorder = recorder }
-    func listFans() -> [FanDeviceState] { fans }
-    func setAuto(fanID: String) async { actions.append(.auto(fanID)); await recorder?.append("auto") }
-    func setTargetRPM(fanID: String, rpm: Int) async -> Int {
-        let fan = fans.first { $0.id == fanID }
-        let target = fan?.capabilities?.clamped(rpm) ?? rpm
-        actions.append(.target(fanID, target)); await recorder?.append("internal")
-        return target
-    }
-    func restoreAllToAuto() async { actions.append(.restore); await recorder?.append("restore") }
-    func recorded() -> [Action] { actions }
-}
-
 actor MockExternalController: ExternalCoolerController {
     var fanState: FanDeviceState
     var shouldFail = false
@@ -56,20 +32,6 @@ actor MockExternalController: ExternalCoolerController {
     }
     func setFailure(_ value: Bool) { shouldFail = value }
     func recordedTargets() -> [Int] { targets }
-}
-
-actor MockHelperClient: PrivilegedFanHelperClient {
-    let controller: MockBuiltInController
-    var helperStatus: HelperStatus
-    init(controller: MockBuiltInController, status: HelperStatus = .healthy) {
-        self.controller = controller; helperStatus = status
-    }
-    func status() -> HelperStatus { helperStatus }
-    func listFans() async throws -> [FanDeviceState] { await controller.listFans() }
-    func setAuto(fanID: String) async throws { await controller.setAuto(fanID: fanID) }
-    func setTargetRPM(fanID: String, rpm: Int) async throws -> Int { await controller.setTargetRPM(fanID: fanID, rpm: rpm) }
-    func restoreAllToAuto() async { await controller.restoreAllToAuto() }
-    func renewLease() -> Date { Fixtures.now.addingTimeInterval(8) }
 }
 
 actor ScriptedReportTransport: FlydigiReportTransport {

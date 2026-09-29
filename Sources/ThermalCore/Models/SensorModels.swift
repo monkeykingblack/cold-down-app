@@ -23,12 +23,16 @@ public struct SensorIdentity: Identifiable, Codable, Hashable, Sendable {
     public let rawKey: String
     public let name: String
     public let group: SensorGroup
+    /// Whether the sensor feeds its group's average. Like Stats, Intel CPU averages only the per-core sensors;
+    /// proximity, package and uncore keys sit well below the cores and would drag the average down.
+    public let countsTowardAverage: Bool
 
-    public init(rawKey: String, name: String, group: SensorGroup, idPrefix: String = "smc") {
+    public init(rawKey: String, name: String, group: SensorGroup, idPrefix: String = "smc", countsTowardAverage: Bool = true) {
         self.id = "\(idPrefix):\(rawKey)"
         self.rawKey = rawKey
         self.name = name
         self.group = group
+        self.countsTowardAverage = countsTowardAverage
     }
 }
 

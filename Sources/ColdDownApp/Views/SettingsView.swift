@@ -1,5 +1,6 @@
 import SwiftUI
 import ThermalCore
+import FlydigiHID
 
 /// Settings in the same card style as the other pages: one card per section, one row per setting
 /// (title and description on the left, control on the right).
@@ -80,24 +81,45 @@ struct SettingsView: View {
                     }
                 }
 
-                section("Fan control", systemImage: "fan") {
-                    row("Built-in fan control", model.helperDisplayStatus.explanation) {
-                        HStack(spacing: 8) {
-                            Pill(text: model.helperDisplayStatus.settingsText, tint: model.helperDisplayStatus.tint)
-                                .fixedSize()
-                            if let action = helperAction {
-                                Button(action.title) { perform(action) }
-                                    .controlSize(.small)
-                            }
+                if model.supportsFlydigiSettings {
+                    section("Flydigi BS3 Pro", systemImage: "snowflake") {
+                        row("Gear speeds", "The cooler's own gears, used when Cold Down is not controlling it.") {
+                            Text(gearSpeedsText)
+                                .font(.callout.monospacedDigit())
+                                .foregroundStyle(.secondary)
                         }
+                        Divider()
+                        row("Fan acceleration", "How quickly the cooler changes speed. Stored in the cooler.") {
+                            Menu(model.flydigiAcceleration?.title ?? "Not set") {
+                                ForEach(FlydigiAcceleration.allCases, id: \.self) { level in
+                                    Button(level.title) { model.setFlydigiAcceleration(level) }
+                                }
+                            }
+                            .fixedSize()
+                            .controlSize(.small)
+                            .disabled(!model.flydigiConnected)
+                        }
+                        Divider()
+                        row("When the Mac sleeps", "What the cooler does while the Mac is asleep. Stored in the cooler.") {
+                            Menu(model.flydigiSleepBehavior?.title ?? "Not set") {
+                                ForEach(FlydigiSleepBehavior.allCases, id: \.self) { behavior in
+                                    Button(behavior.title) { model.setFlydigiSleepBehavior(behavior) }
+                                }
+                            }
+                            .fixedSize()
+                            .controlSize(.small)
+                            .disabled(!model.flydigiConnected)
+                        }
+                        if !model.flydigiConnected { note("Connect the cooler to change these settings.") }
+                        if let message = model.flydigiSettingError { note(message, isError: true) }
                     }
-                    if let message = model.helperRegistration.errorMessage { note(message, isError: true) }
+                    .task(id: model.flydigiConnected) { await model.refreshFlydigiGearSpeeds() }
                 }
 
                 section("Safety", systemImage: "checkmark.shield") {
                     row(
-                        "Restore system Auto mode",
-                        "Built-in fans return to macOS control when the app disconnects or stops responding, around sleep and wake, when a controlling temperature is unavailable, after a helper error, and when you quit."
+                        "Thermal safety",
+                        "The cooler runs at full speed when the controlling temperature is unavailable or any sensor reaches 95 °C, and returns to its own gear when you quit."
                     ) {
                         Pill(text: "Always on", tint: .green).fixedSize()
                     }
@@ -148,31 +170,9 @@ struct SettingsView: View {
         return Self.refreshIntervals.contains(current) ? Self.refreshIntervals : (Self.refreshIntervals + [current]).sorted()
     }
 
-    private enum HelperAction {
-        case install, reinstall, approve
-        var title: String {
-            switch self {
-            case .install: "Install…"
-            case .reinstall: "Reinstall…"
-            case .approve: "Approve…"
-            }
-        }
-    }
-
-    private var helperAction: HelperAction? {
-        switch model.helperDisplayStatus {
-        case .available: nil
-        case .requiresApproval: .approve
-        case .notResponding: .reinstall
-        case .notInstalled, .unavailable: .install
-        }
-    }
-
-    private func perform(_ action: HelperAction) {
-        switch action {
-        case .approve: model.helperRegistration.openApprovalSettings()
-        case .install: Task { await model.helperRegistration.register() }
-        case .reinstall: Task { await model.helperRegistration.reinstall() }
-        }
+    private var gearSpeedsText: String {
+        guard model.flydigiConnected else { return "—" }
+        guard let speeds = model.flydigiGearSpeeds else { return "Reading…" }
+        return speeds.map { $0.formatted() }.joined(separator: " · ") + " RPM"
     }
 }

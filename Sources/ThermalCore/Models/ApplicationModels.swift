@@ -1,9 +1,5 @@
 import Foundation
 
-public enum HelperStatus: String, Codable, Sendable {
-    case unavailable, notRegistered, requiresApproval, healthy, interrupted
-}
-
 public struct AppPreferences: Codable, Equatable, Sendable {
     public static let schemaVersion = 1
     public var schemaVersion: Int
@@ -43,7 +39,6 @@ public struct CoolingSnapshot: Codable, Sendable {
     public let sensors: SensorSummary
     public let fans: [FanDeviceState]
     public let profiles: [String: FanProfile]
-    public let helperStatus: HelperStatus
     public let overallMode: OverallControlMode
     public let lastDecision: CoolingDecision?
     public let generatedAt: Date
@@ -52,7 +47,6 @@ public struct CoolingSnapshot: Codable, Sendable {
         sensors: SensorSummary,
         fans: [FanDeviceState],
         profiles: [String: FanProfile],
-        helperStatus: HelperStatus,
         overallMode: OverallControlMode,
         lastDecision: CoolingDecision?,
         generatedAt: Date
@@ -60,7 +54,6 @@ public struct CoolingSnapshot: Codable, Sendable {
         self.sensors = sensors
         self.fans = fans
         self.profiles = profiles
-        self.helperStatus = helperStatus
         self.overallMode = overallMode
         self.lastDecision = lastDecision
         self.generatedAt = generatedAt
@@ -68,14 +61,14 @@ public struct CoolingSnapshot: Codable, Sendable {
 
     public func withProfiles(_ profiles: [String: FanProfile]) -> CoolingSnapshot {
         CoolingSnapshot(
-            sensors: sensors, fans: fans, profiles: profiles, helperStatus: helperStatus,
+            sensors: sensors, fans: fans, profiles: profiles,
             overallMode: overallMode, lastDecision: lastDecision, generatedAt: generatedAt
         )
     }
 
     public static var empty: CoolingSnapshot {
         CoolingSnapshot(
-            sensors: .empty(), fans: [], profiles: [:], helperStatus: .unavailable,
+            sensors: .empty(), fans: [], profiles: [:],
             overallMode: .readOnly, lastDecision: nil, generatedAt: Date()
         )
     }

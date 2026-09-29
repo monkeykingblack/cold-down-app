@@ -12,7 +12,7 @@ final class ColdDownAppDelegate: NSObject, NSApplicationDelegate {
         model.start()
     }
 
-    /// Defers quitting until built-in fans have been handed back to macOS (bounded by a timeout).
+    /// Defers quitting until the cooler has been handed back to its own control (bounded by a timeout).
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard !terminating else { return .terminateLater }
         terminating = true

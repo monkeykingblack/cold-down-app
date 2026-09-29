@@ -3,11 +3,11 @@ import ThermalCore
 
 final class FanProfileTransitionTests: XCTestCase {
     func testTypedValuesClampToCapabilities() {
-        var state = FanConfigurationState(fan: Fixtures.builtIn(), profile: FanProfile())
+        var state = FanConfigurationState(fan: Fixtures.external(), profile: FanProfile())
         state.setThreshold(100); XCTAssertEqual(state.profile.thresholdCelsius, 85)
         state.setThreshold(10); XCTAssertEqual(state.profile.thresholdCelsius, 45)
-        state.setManualTarget(0); XCTAssertEqual(state.profile.manualTarget, 1_200)
-        state.setManualTarget(99_000); XCTAssertEqual(state.profile.manualTarget, 5_000)
+        state.setManualTarget(0); XCTAssertEqual(state.profile.manualTarget, 1_300)
+        state.setManualTarget(99_000); XCTAssertEqual(state.profile.manualTarget, 4_000)
     }
 
     func testDisconnectedAndCapabilityLimitedControlsAreDisabled() {

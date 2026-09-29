@@ -22,12 +22,6 @@ mkdir -p "$staging" "$(dirname "$output_path")"
 ln -s /Applications "$staging/Applications"
 
 staged_app="$staging/Cold Down.app"
-helper="$staged_app/Contents/Library/HelperTools/ColdDownHelper"
-if [[ -f "$helper" ]]; then
-    /usr/bin/codesign --force --sign - --options runtime \
-        --entitlements "$project_root/Sources/ColdDownHelper/ColdDownHelper.entitlements" \
-        "$helper"
-fi
 /usr/bin/codesign --force --sign - --options runtime \
     --entitlements "$project_root/Sources/ColdDownApp/ColdDownApp.entitlements" \
     "$staged_app"

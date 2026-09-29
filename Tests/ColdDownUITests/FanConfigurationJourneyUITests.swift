@@ -12,13 +12,14 @@ final class FanConfigurationJourneyUITests: XCTestCase {
         app.launch()
         // Found by scene ID: page navigation titles replace the "Cold Down" window title.
         XCTAssertTrue(app.windows["main"].waitForExistence(timeout: 10))
-        app.buttons["thermal.fan.builtin:0"].click()
-        XCTAssertTrue(app.buttons["thermal.fan.mode.builtin:0.auto"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.sliders["thermal.fan.auto.threshold.slider.builtin:0"].exists)
-        XCTAssertTrue(app.textFields["thermal.fan.auto.threshold.field.builtin:0"].exists)
-        app.buttons["thermal.fan.mode.builtin:0.manual"].click()
-        XCTAssertTrue(app.sliders["thermal.fan.manual.speed.slider.builtin:0"].exists)
-        XCTAssertTrue(app.textFields["thermal.fan.manual.speed.field.builtin:0"].exists)
+        let cooler = "flydigi:37d7:1004"
+        app.buttons["thermal.fan.\(cooler)"].click()
+        XCTAssertTrue(app.buttons["thermal.fan.mode.\(cooler).auto"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.sliders["thermal.fan.auto.threshold.slider.\(cooler)"].exists)
+        XCTAssertTrue(app.textFields["thermal.fan.auto.threshold.field.\(cooler)"].exists)
+        app.buttons["thermal.fan.mode.\(cooler).manual"].click()
+        XCTAssertTrue(app.sliders["thermal.fan.manual.speed.slider.\(cooler)"].exists)
+        XCTAssertTrue(app.textFields["thermal.fan.manual.speed.field.\(cooler)"].exists)
     }
 
     func testDisconnectedCoolerRemainsVisibleAndDisabled() {

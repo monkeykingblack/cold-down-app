@@ -8,17 +8,6 @@ public protocol FanDevice: Sendable {
     func state() async -> FanDeviceState
 }
 
-public protocol BuiltInFanReader: Sendable {
-    func listFans() async throws -> [FanDeviceState]
-}
-
-public protocol BuiltInFanController: Sendable {
-    func listFans() async throws -> [FanDeviceState]
-    func setAuto(fanID: String) async throws
-    func setTargetRPM(fanID: String, rpm: Int) async throws -> Int
-    func restoreAllToAuto() async
-}
-
 public struct AcknowledgedTarget: Codable, Equatable, Sendable {
     public let target: Int
     public let acknowledgedAt: Date
@@ -39,13 +28,7 @@ extension ExternalCoolerController {
     public func releaseControl() async {}
 }
 
-public protocol PrivilegedFanHelperClient: BuiltInFanController {
-    func status() async -> HelperStatus
-    func renewLease() async throws -> Date
-}
-
 public protocol ProfileStore: Sendable {
     func load() async -> AppPreferences
     func save(_ preferences: AppPreferences) async throws
 }
-

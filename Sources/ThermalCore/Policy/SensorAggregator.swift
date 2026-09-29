@@ -82,8 +82,8 @@ public struct SensorAggregator: Sendable {
         }
         let valid = readings.filter(\.isValid)
         var calculated: [CalculatedSensorKind: Double] = [:]
-        let cpu = valid.filter { $0.identity.group == .cpu }.compactMap(\.valueCelsius)
-        let gpu = valid.filter { $0.identity.group == .gpu }.compactMap(\.valueCelsius)
+        let cpu = Self.averageInputs(valid, group: .cpu)
+        let gpu = Self.averageInputs(valid, group: .gpu)
         let all = valid.compactMap(\.valueCelsius)
         if !cpu.isEmpty { calculated[.cpuAverage] = cpu.reduce(0, +) / Double(cpu.count) }
         if !gpu.isEmpty { calculated[.gpuAverage] = gpu.reduce(0, +) / Double(gpu.count) }
@@ -98,6 +98,13 @@ public struct SensorAggregator: Sendable {
             byGroup[reading.identity.group] = reading
         }
         return SensorSummary(readings: readings, calculated: calculated, hottestByGroup: byGroup, generatedAt: now)
+    }
+
+    /// The group's averaged sensors, or every sensor in the group when the machine exposes none of them.
+    private static func averageInputs(_ readings: [SensorReading], group: SensorGroup) -> [Double] {
+        let inGroup = readings.filter { $0.identity.group == group }
+        let averaged = inGroup.filter(\.identity.countsTowardAverage)
+        return (averaged.isEmpty ? inGroup : averaged).compactMap(\.valueCelsius)
     }
 }
 

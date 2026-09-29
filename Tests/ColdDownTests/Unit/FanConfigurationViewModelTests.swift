@@ -6,9 +6,9 @@ import ThermalCore
 final class FanConfigurationViewModelTests: XCTestCase {
     func testSliderAndNumericValuesShareValidatedState() {
         let fan = FanDeviceState(
-            id: "builtin:0", name: "Mac fan", kind: .builtIn, connection: .connected,
+            id: "external", name: "BS3 Pro", connection: .connected,
             currentSpeed: 2_000,
-            capabilities: SpeedCapabilities(minimum: 1_200, maximum: 5_000, step: 10, provenance: .deviceVerified),
+            capabilities: SpeedCapabilities(minimum: 1_200, maximum: 5_000, step: 10, provenance: .deterministicMock),
             writeAvailability: .ready
         )
         let model = FanConfigurationViewModel(fan: fan, profile: FanProfile())
@@ -23,12 +23,12 @@ final class FanConfigurationViewModelTests: XCTestCase {
 
     func testDisconnectedAndCapabilityLimitedStatesDisableControls() {
         let disconnected = FanDeviceState(
-            id: "external", name: "BS3 Pro", kind: .external, connection: .disconnected,
+            id: "external", name: "BS3 Pro", connection: .disconnected,
             writeAvailability: .disconnected
         )
         XCTAssertFalse(FanConfigurationViewModel(fan: disconnected, profile: FanProfile()).controlsEnabled)
         let limited = FanDeviceState(
-            id: "external", name: "BS3 Pro", kind: .external, connection: .connected,
+            id: "external", name: "BS3 Pro", connection: .connected,
             capabilities: SpeedCapabilities(minimum: 1_300, maximum: 4_000, provenance: .unverified),
             writeAvailability: .capabilityLimited
         )
@@ -36,16 +36,16 @@ final class FanConfigurationViewModelTests: XCTestCase {
     }
 
     func testLiveDeviceUpdatesEnableControlsAndReclampTarget() {
-        let missing = FanDeviceState(
-            id: "builtin:0", name: "Mac fan", kind: .builtIn, connection: .connected, currentSpeed: 2_000,
-            capabilities: SpeedCapabilities(minimum: 1_200, maximum: 5_000, provenance: .deviceVerified),
-            writeAvailability: .helperMissing
+        let limited = FanDeviceState(
+            id: "external", name: "BS3 Pro", connection: .connected, currentSpeed: 2_000,
+            capabilities: SpeedCapabilities(minimum: 1_200, maximum: 5_000, provenance: .unverified),
+            writeAvailability: .capabilityLimited
         )
-        let model = FanConfigurationViewModel(fan: missing, profile: FanProfile(manualTarget: 4_800))
+        let model = FanConfigurationViewModel(fan: limited, profile: FanProfile(manualTarget: 4_800))
         XCTAssertFalse(model.controlsEnabled)
-        var ready = missing
+        var ready = limited
         ready.writeAvailability = .ready
-        ready.capabilities = SpeedCapabilities(minimum: 1_200, maximum: 4_000, provenance: .deviceVerified)
+        ready.capabilities = SpeedCapabilities(minimum: 1_200, maximum: 4_000, provenance: .deterministicMock)
         model.updateFan(ready)
         XCTAssertTrue(model.controlsEnabled)
         XCTAssertEqual(model.manualTarget, 4_000)

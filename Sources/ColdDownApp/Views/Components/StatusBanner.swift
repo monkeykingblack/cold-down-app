@@ -4,7 +4,7 @@ import ThermalCore
 /// The one attention message, shown as a notice icon (with a popover) in the window toolbar and the menu-bar popover.
 struct StatusBanner: Equatable {
     enum Severity { case critical, warning, info }
-    enum Action { case openSettings, approveHelper, dismissRecovery }
+    enum Action { case openSettings, dismissRecovery }
 
     /// Identifies *this* message; dismissing hides it until the situation changes to a different message.
     let id: String
@@ -20,7 +20,7 @@ struct StatusBanner: Equatable {
         case "critical": "Critical temperature"
         case "safety": "Safety fallback"
         case "recovery": "Recovered from an unexpected quit"
-        default: "Fan control"
+        default: "Cooling"
         }
     }
 
@@ -34,7 +34,7 @@ struct StatusBanner: Equatable {
     private static func candidate(for model: AppModel) -> StatusBanner? {
         let decision = model.snapshot.lastDecision
         if decision?.band == .critical {
-            return StatusBanner(id: "critical", severity: .critical, message: decision?.reason ?? "Critical temperature. Fans are under macOS control.", action: nil)
+            return StatusBanner(id: "critical", severity: .critical, message: decision?.reason ?? "Critical temperature. The cooler is running at full speed.", action: nil)
         }
         if model.snapshot.overallMode == .safetyFallback {
             return StatusBanner(id: "safety", severity: .warning, message: decision?.reason ?? "Safety fallback is active.", action: nil)
@@ -43,27 +43,11 @@ struct StatusBanner: Equatable {
             return StatusBanner(
                 id: "recovery",
                 severity: .info,
-                message: "Cold Down quit unexpectedly last time, so fans were returned to Auto. Your manual speeds are still saved.",
+                message: "Cold Down quit unexpectedly last time, so the cooler was returned to Auto. Your manual speed is still saved.",
                 action: .dismissRecovery
             )
         }
-        let hasBuiltInFans = model.snapshot.fans.contains { $0.kind == .builtIn }
-        guard hasBuiltInFans, model.helperDisplayStatus != .available else { return nil }
-        if model.helperDisplayStatus == .requiresApproval {
-            return StatusBanner(
-                id: "helper.requiresApproval",
-                severity: .info,
-                message: "Turn on the Cold Down helper in Login Items to control built-in fans.",
-                action: .approveHelper
-            )
-        }
-        let severity: Severity = model.helperDisplayStatus == .notResponding ? .warning : .info
-        return StatusBanner(
-            id: "helper.\(model.helperDisplayStatus)",
-            severity: severity,
-            message: model.helperDisplayStatus.explanation,
-            action: .openSettings
-        )
+        return nil
     }
 
     var tint: Color {
@@ -106,9 +90,6 @@ struct NoticeToolbarButton: View {
                     }
                     Spacer()
                     switch banner.action {
-                    case .approveHelper:
-                        Button("Approve…") { showing = false; model.helperRegistration.openApprovalSettings() }
-                            .keyboardShortcut(.defaultAction)
                     case .openSettings:
                         Button("Open Settings") { showing = false; openSettings() }
                             .keyboardShortcut(.defaultAction)

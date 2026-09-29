@@ -7,7 +7,7 @@ enum UITestLaunchConfiguration {
         app.launchArguments = [
             "-ApplePersistenceIgnoreState", "YES",
             "-NSQuitAlwaysKeepsWindows", "NO",
-            "--mock", "--helper-unavailable", "--cooler-disconnected"
+            "--mock", "--cooler-disconnected"
         ] + extraArguments
         return app
     }

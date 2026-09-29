@@ -2,18 +2,16 @@ import Foundation
 
 public actor CoolingCoordinator {
     private let sensorProvider: any SensorProvider
-    private let fanReader: any BuiltInFanReader
-    private let builtInController: (any BuiltInFanController)?
     private let externalController: (any ExternalCoolerController)?
-    private let helperClient: (any PrivilegedFanHelperClient)?
     private let profileStore: any ProfileStore
     private let clock: any ThermalClock
     private let policy: CoolingPolicy
     private var aggregator = SensorAggregator()
     private var preferences: AppPreferences = .defaults
+    private var preferencesLoad: Task<AppPreferences, Never>?
+    private var preferencesLoaded = false
     private var latestSnapshot: CoolingSnapshot = .empty
     private var refreshTask: Task<Void, Never>?
-    private var heartbeatTask: Task<Void, Never>?
     private var externalWasConnected = false
     private var started = false
     private var refreshInFlight = false
@@ -22,19 +20,13 @@ public actor CoolingCoordinator {
 
     public init(
         sensorProvider: any SensorProvider,
-        fanReader: any BuiltInFanReader,
-        builtInController: (any BuiltInFanController)? = nil,
         externalController: (any ExternalCoolerController)? = nil,
-        helperClient: (any PrivilegedFanHelperClient)? = nil,
         profileStore: any ProfileStore,
         clock: any ThermalClock = SystemThermalClock(),
         policy: CoolingPolicy = CoolingPolicy()
     ) {
         self.sensorProvider = sensorProvider
-        self.fanReader = fanReader
-        self.builtInController = builtInController
         self.externalController = externalController
-        self.helperClient = helperClient
         self.profileStore = profileStore
         self.clock = clock
         self.policy = policy
@@ -49,7 +41,7 @@ public actor CoolingCoordinator {
     public func start(revertManualProfiles: Bool = false) async -> Bool {
         guard !started else { return false }
         started = true
-        preferences = await profileStore.load()
+        await loadPreferencesIfNeeded()
         var reverted = false
         if revertManualProfiles {
             for (fanID, profile) in preferences.profiles where profile.mode == .manual {
@@ -63,7 +55,6 @@ public actor CoolingCoordinator {
                 ThermalLog.safety.notice("Previous session ended unexpectedly; manual fan profiles returned to Auto")
             }
         }
-        await builtInController?.restoreAllToAuto()
         await externalController?.connect()
         await refreshNow()
         refreshTask = Task { [weak self] in
@@ -72,15 +63,6 @@ public actor CoolingCoordinator {
                 let interval = await self.refreshInterval()
                 do { try await self.clock.sleep(for: interval) } catch { return }
                 await self.refreshNow()
-            }
-        }
-        if helperClient != nil {
-            heartbeatTask = Task { [weak self] in
-                while !Task.isCancelled {
-                    guard let self else { return }
-                    await self.renewHelperLease()
-                    do { try await self.clock.sleep(for: 2) } catch { return }
-                }
             }
         }
         return reverted
@@ -129,18 +111,6 @@ public actor CoolingCoordinator {
         } catch {
             summary = aggregator.current(now: now, refreshInterval: preferences.refreshInterval)
         }
-        var builtIns = (try? await fanReader.listFans()) ?? []
-        var helperStatus = await helperClient?.status() ?? .unavailable
-        if helperStatus == .healthy, let helperClient {
-            do {
-                // Merge per fan: a fan the helper can't control keeps its read-only state instead of vanishing.
-                let controlled = Dictionary(try await helperClient.listFans().map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-                builtIns = builtIns.map { controlled[$0.id] ?? $0 }
-                    + controlled.values.filter { fan in !builtIns.contains { $0.id == fan.id } }.sorted { $0.id < $1.id }
-            } catch {
-                helperStatus = .interrupted
-            }
-        }
         var external = await externalController?.state()
         if preferences.automaticFlydigiReconnect,
            external?.connection == .connected,
@@ -149,12 +119,10 @@ public actor CoolingCoordinator {
             external = await externalController?.state()
         }
         externalWasConnected = external?.connection == .connected
-        let fans = builtIns + (external.map { [$0] } ?? [])
+        let fans = external.map { [$0] } ?? []
         let decision = policy.evaluate(
             summary: summary,
-            fanStates: fans,
             profiles: preferences.profiles,
-            helperStatus: helperStatus,
             externalState: external,
             now: now
         )
@@ -163,8 +131,7 @@ public actor CoolingCoordinator {
             sensors: summary,
             fans: fans,
             profiles: preferences.profiles,
-            helperStatus: helperStatus,
-            overallMode: overallMode(for: decision, helper: helperStatus),
+            overallMode: overallMode(for: decision, external: external),
             lastDecision: decision,
             generatedAt: now
         )
@@ -175,8 +142,9 @@ public actor CoolingCoordinator {
         for continuation in snapshotContinuations.values { continuation.yield(latestSnapshot) }
     }
 
-    /// - Parameter applyNow: false only saves the profile (used while shutting down, when fans are restored anyway).
+    /// - Parameter applyNow: false only saves the profile (used while shutting down, when the cooler is released anyway).
     public func updateProfile(fanID: String, profile: FanProfile, applyNow: Bool = true) async {
+        await loadPreferencesIfNeeded()
         if let fan = latestSnapshot.fans.first(where: { $0.id == fanID }) {
             preferences.profiles[fanID] = profile.validated(for: fan)
         } else {
@@ -184,15 +152,18 @@ public actor CoolingCoordinator {
         }
         try? await profileStore.save(preferences)
         guard applyNow else { return }
-        // Show the new profile immediately; applying it to hardware can take seconds (Apple Silicon takeover).
+        // Show the new profile immediately; the hardware write follows on the refresh.
         latestSnapshot = latestSnapshot.withProfiles(preferences.profiles)
         publishSnapshot()
         await refreshNow()
     }
 
+    /// Updates the app-wide settings. Profiles are owned by `updateProfile`, so the caller's copy of them (which may
+    /// predate the stored ones, e.g. a launch-at-login sync before `start`) is ignored rather than written back.
     public func updatePreferences(_ newValue: AppPreferences) async {
+        await loadPreferencesIfNeeded()
         preferences = AppPreferences(
-            profiles: newValue.profiles,
+            profiles: preferences.profiles,
             refreshInterval: newValue.refreshInterval,
             showTemperatureInMenuBar: newValue.showTemperatureInMenuBar,
             launchAtLogin: newValue.launchAtLogin,
@@ -203,12 +174,21 @@ public actor CoolingCoordinator {
 
     public func currentPreferences() -> AppPreferences { preferences }
 
+    /// Loads the stored preferences once. Every writer awaits this first, so a write that arrives before `start`
+    /// never saves the in-memory defaults over what is on disk.
+    private func loadPreferencesIfNeeded() async {
+        guard !preferencesLoaded else { return }
+        let load = preferencesLoad ?? Task { [profileStore] in await profileStore.load() }
+        preferencesLoad = load
+        let loaded = await load.value
+        guard !preferencesLoaded else { return }
+        preferences = loaded
+        preferencesLoaded = true
+    }
+
     public func shutdown() async {
         refreshTask?.cancel()
         refreshTask = nil
-        heartbeatTask?.cancel()
-        heartbeatTask = nil
-        await builtInController?.restoreAllToAuto()
         await externalController?.releaseControl()
         started = false
     }
@@ -216,50 +196,22 @@ public actor CoolingCoordinator {
     private func refreshInterval() -> TimeInterval { preferences.refreshInterval }
 
     private func apply(_ decision: CoolingDecision) async {
-        var externalSucceeded = true
+        let speed: Int
         switch decision.externalAction {
-        case .none:
-            break
-        case .stop:
-            do { _ = try await externalController?.setTarget(0) }
-            catch { externalSucceeded = false }
-        case let .target(speed, _):
-            do { _ = try await externalController?.setTarget(speed) }
-            catch { externalSucceeded = false }
+        case .none: return
+        case .stop: speed = 0
+        case let .target(target): speed = target
         }
-
-        for (fanID, action) in decision.builtInActions {
-            switch action {
-            case .automatic:
-                try? await builtInController?.setAuto(fanID: fanID)
-            case let .target(rpm, requiresACK):
-                guard !requiresACK || externalSucceeded else { continue }
-                do {
-                    _ = try await builtInController?.setTargetRPM(fanID: fanID, rpm: rpm)
-                } catch {
-                    ThermalLog.policy.error("Setting \(fanID, privacy: .public) to \(rpm, privacy: .public) RPM failed: \(error.localizedDescription, privacy: .public)")
-                }
-            }
-        }
-        if decision.band == .critical || decision.band == .safetyFallback {
-            await builtInController?.restoreAllToAuto()
-        }
-    }
-
-    private func overallMode(for decision: CoolingDecision, helper: HelperStatus) -> OverallControlMode {
-        if decision.band == .critical || decision.band == .safetyFallback { return .safetyFallback }
-        if helper != .healthy { return .readOnly }
-        if preferences.profiles.values.contains(where: { $0.mode == .manual }) { return .manual }
-        return .automatic
-    }
-
-    private func renewHelperLease() async {
-        guard let helperClient else { return }
         do {
-            _ = try await helperClient.renewLease()
+            _ = try await externalController?.setTarget(speed)
         } catch {
-            ThermalLog.safety.error("Helper heartbeat failed; requesting system Auto mode")
-            await builtInController?.restoreAllToAuto()
+            ThermalLog.policy.error("Setting the cooler to \(speed, privacy: .public) RPM failed: \(error.localizedDescription, privacy: .public)")
         }
+    }
+
+    private func overallMode(for decision: CoolingDecision, external: FanDeviceState?) -> OverallControlMode {
+        if decision.band == .critical || decision.band == .safetyFallback { return .safetyFallback }
+        guard let external, external.connection == .connected, external.writeAvailability == .ready else { return .readOnly }
+        return preferences.profiles[external.id]?.mode == .manual ? .manual : .automatic
     }
 }

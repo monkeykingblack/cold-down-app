@@ -20,7 +20,6 @@ public struct FanConfigurationState: Sendable {
 public struct MenuBarPresentation: Equatable, Sendable {
     public let label: String
     public let hottestDescription: String
-    public let builtInSummaries: [String]
     public let externalSummary: String
     public let overallMode: String
 
@@ -31,10 +30,7 @@ public struct MenuBarPresentation: Equatable, Sendable {
         if let hottest = snapshot.sensors.hottestReading, let value = hottest.valueCelsius {
             hottestDescription = "\(hottest.identity.name) · \(Int(value.rounded()))°C"
         } else { hottestDescription = "No valid temperature" }
-        builtInSummaries = snapshot.fans.filter { $0.kind == .builtIn }.map {
-            "\($0.name): \(Self.speed($0) ?? "Unavailable")"
-        }
-        if let external = snapshot.fans.first(where: { $0.kind == .external }) {
+        if let external = snapshot.fans.first {
             externalSummary = external.connection == .connected
                 ? "\(external.name): \(Self.speed(external) ?? "Connected")"
                 : "\(external.name): Disconnected"

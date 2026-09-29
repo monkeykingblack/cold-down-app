@@ -15,7 +15,5 @@
     <key>NSHumanReadableCopyright</key><string>Copyright © 2026 Cold Down contributors</string>
     <key>NSPrincipalClass</key><string>NSApplication</string>
     <key>NSQuitAlwaysKeepsWindows</key><false/>
-    <key>ThermalExpectedClientIdentifier</key><string>$(THERMAL_APP_BUNDLE_ID)</string>
-    <key>ThermalHelperMachService</key><string>$(THERMAL_HELPER_MACH_SERVICE)</string>
 </dict>
 </plist>

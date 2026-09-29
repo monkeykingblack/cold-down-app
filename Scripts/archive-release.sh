@@ -28,8 +28,6 @@ settings=(
     ONLY_ACTIVE_ARCH=NO
     COMPILER_INDEX_STORE_ENABLE=NO
     "THERMAL_APP_BUNDLE_ID=${THERMAL_APP_BUNDLE_ID:-com.example.ColdDown}"
-    "THERMAL_HELPER_BUNDLE_ID=${THERMAL_HELPER_BUNDLE_ID:-com.example.ColdDown.Helper}"
-    "THERMAL_HELPER_MACH_SERVICE=${THERMAL_HELPER_MACH_SERVICE:-com.example.ColdDown.Helper}"
 )
 
 case "$signing_mode" in
@@ -40,13 +38,11 @@ case "$signing_mode" in
         : "${DEVELOPER_ID_APPLICATION:?Set DEVELOPER_ID_APPLICATION for Developer ID mode}"
         : "${DEVELOPMENT_TEAM:?Set DEVELOPMENT_TEAM for Developer ID mode}"
         [[ "$DEVELOPMENT_TEAM" =~ ^[A-Z0-9]{10}$ ]] || { echo "DEVELOPMENT_TEAM must be a 10-character team ID" >&2; exit 64; }
-        # The helper pins client connections to this team; shipping placeholder identifiers is never valid.
-        for identifier in "${THERMAL_APP_BUNDLE_ID:-}" "${THERMAL_HELPER_BUNDLE_ID:-}" "${THERMAL_HELPER_MACH_SERVICE:-}"; do
-            if [[ -z "$identifier" || "$identifier" == com.example.* ]]; then
-                echo "Set THERMAL_APP_BUNDLE_ID, THERMAL_HELPER_BUNDLE_ID and THERMAL_HELPER_MACH_SERVICE to real identifiers for Developer ID mode" >&2
-                exit 64
-            fi
-        done
+        # Shipping the placeholder identifier is never valid.
+        if [[ -z "${THERMAL_APP_BUNDLE_ID:-}" || "${THERMAL_APP_BUNDLE_ID:-}" == com.example.* ]]; then
+            echo "Set THERMAL_APP_BUNDLE_ID to a real identifier for Developer ID mode" >&2
+            exit 64
+        fi
         settings+=(
             CODE_SIGN_STYLE=Manual
             "CODE_SIGN_IDENTITY=$DEVELOPER_ID_APPLICATION"

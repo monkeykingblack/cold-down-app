@@ -64,7 +64,7 @@ public actor BS3ProController: ExternalCoolerController {
         let productID = await transport.connectedProductID() ?? 0x1004
         let ready = connected && capabilities.map(canWrite) == true
         return FanDeviceState(
-            id: "flydigi:37d7:1004", name: Self.name(for: productID), kind: .external,
+            id: "flydigi:37d7:1004", name: Self.name(for: productID),
             connection: connected ? .connected : .disconnected,
             currentSpeed: connected ? measuredSpeed : nil, targetSpeed: lastTarget,
             reportedMode: operatingMode, capabilities: capabilities,
@@ -94,6 +94,28 @@ public actor BS3ProController: ExternalCoolerController {
         lastTarget = target
         operatingMode = .manual
         return AcknowledgedTarget(target: target, acknowledgedAt: Date())
+    }
+
+    /// The four gear speeds stored in the cooler, lowest first (0x27).
+    public func gearSpeeds() async throws -> [Int] {
+        guard await transport.isConnected() else { throw ThermalControlError.disconnected }
+        let bytes = [UInt8](try await executor.execute(command: .queryGearSpeeds).payload)
+        guard bytes.count >= 2, bytes.count.isMultiple(of: 2) else {
+            throw ThermalControlError.invalidData("Gear speed reply is malformed")
+        }
+        return stride(from: 0, to: bytes.count, by: 2).map { Int(bytes[$0]) | Int(bytes[$0 + 1]) << 8 }
+    }
+
+    /// Sets how quickly the fan ramps between speeds (0x2A).
+    public func setAcceleration(_ level: FlydigiAcceleration) async throws {
+        guard await transport.isConnected() else { throw ThermalControlError.disconnected }
+        _ = try await executor.execute(command: .setAcceleration, payload: Data([level.rawValue]))
+    }
+
+    /// Sets what the cooler does while the host sleeps (0x0D).
+    public func setSleepBehavior(_ behavior: FlydigiSleepBehavior) async throws {
+        guard await transport.isConnected() else { throw ThermalControlError.disconnected }
+        _ = try await executor.execute(command: .setSleepBehavior, payload: Data([behavior.rawValue]))
     }
 
     /// Hands control back to the cooler's own gear setting.

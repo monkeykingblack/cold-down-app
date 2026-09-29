@@ -11,6 +11,7 @@ readSensors() async throws -> SensorBatch
 - May return no readings without terminating the application.
 - Does not reuse values from an earlier batch; staleness belongs to the coordinator.
 - Assigns a monotonic generation before polling. The coordinator discards a completed batch older than the latest committed generation and applies the timestamp conflict rules from `data-model.md`.
+- Is read-only. `PlatformSensorProvider` selects `AppleSMCSensorProvider` (Intel) or `AppleSiliconHIDSensorProvider` (Apple Silicon) at runtime; neither exposes a write entry point.
 
 ## FanDevice
 
@@ -21,69 +22,35 @@ state() async -> FanDeviceState
 - Provides common identity, connection, capabilities, current state, and write availability.
 - Does not imply that writes are supported.
 
-## BuiltInFanReader
-
-```text
-listFans() async throws -> [FanDeviceState]
-```
-
-- Requires no privileged helper.
-- Returns only discovered fans and available fields.
-- Missing target/mode keys produce optional values, not fabricated defaults.
-
-## BuiltInFanController
-
-```text
-listFans() async throws -> [FanDeviceState]
-setAuto(fanID) async throws
-setTargetRPM(fanID, rpm) async throws -> appliedRPM
-restoreAllToAuto() async
-```
-
-- Exposes coordinator-facing high-level operations only; no SMC key or byte API exists.
-- Implementations independently validate identity and capabilities and never accept zero RPM.
-- The production implementation is backed by `PrivilegedFanHelperClient`; deterministic mocks implement the same boundary.
-
 ## ExternalCoolerController: FanDevice
 
 ```text
 state() async -> FanDeviceState
 connect() async
 setTarget(speed) async throws -> AcknowledgedTarget
+releaseControl() async
 ```
 
 - Owns attach/detach handling, reconnect, serialized commands, ACK matching, and capability gating.
-- A successful result means a matching valid acknowledgement was received.
+- A successful `setTarget` result means a matching valid acknowledgement was received.
 - It cannot expose a raw-command method to the application layer.
 - `setTarget` is unavailable for unverified, malformed, stale, or deterministic-mock-only capabilities on a real transport and must emit no mutating report.
-
-## PrivilegedFanHelperClient: BuiltInFanController
-
-```text
-status() async -> HelperStatus
-listFans() async throws -> [HelperFanRecord]
-setAuto(fanID) async throws
-setTargetRPM(fanID, rpm) async throws -> appliedRPM
-restoreAllToAuto() async
-renewLease() async throws -> leaseExpiry
-```
-
-- XPC failures map to unavailable status and trigger coordinator restoration handling.
-- The app treats timeout or disconnect as failure; it never assumes a write succeeded.
+- `releaseControl` returns the device to its own control mode (`0x24`) and is called on shutdown; the default implementation does nothing so mocks need not override it.
+- The production implementation is `BS3ProController`; deterministic mocks implement the same boundary.
 
 ## CoolingPolicy
 
 ```text
-evaluate(summary, fanStates, profiles, helperStatus, externalState, now) -> CoolingDecision
+evaluate(summary, profiles, externalState, now) -> CoolingDecision
 ```
 
 - Is a pure function and performs no I/O.
-- Checks every fresh valid physical and calculated reading for the 95 °C Critical override before evaluating profile demand.
-- Evaluates active Auto profiles independently and selects the maximum `(band rank, normalized progress, fanID)` as system non-critical demand.
-- Uses the exact interpolation, rounding, clamping, current-RPM floor, and threshold-85 guard defined in `data-model.md`.
-- Generates a built-in target only for that fan's own Hot profile and records whether external acknowledgement is a prerequisite.
-- In Cool, selects verified stop only when explicitly supported; otherwise selects the lowest verified safe speed. Disconnected or capability-limited external state produces no external write.
-- A stale or missing selected Auto source produces SafetyFallback with verified external maximum only for a write-ready cooler and Auto restoration for every built-in fan.
+- Checks every fresh valid physical and calculated reading for the 95 °C Critical override before evaluating the profile; Critical sets a write-ready cooler to its verified maximum and overrides Manual.
+- Returns `externalAction: .none` and band Cool when the cooler is absent, disconnected, capability-limited, or structurally invalid.
+- Uses the saved profile for the cooler's `id`, or `FanProfile.suggested` until one is saved.
+- Manual returns `.target` of the manual target clamped to the cooler's range.
+- A stale or missing selected Auto source produces SafetyFallback with `.target(maximum)`.
+- Auto uses the exact interpolation, rounding, clamping, and threshold-85 guard defined in `data-model.md`: Cool selects verified stop only when explicitly supported and otherwise the lowest verified safe speed; Warm ramps; Hot holds maximum.
 
 ## ProfileStore
 
@@ -98,27 +65,30 @@ save(preferences) async throws
 ## CoolingCoordinator
 
 ```text
-start() async
-snapshot() async -> CoolingSnapshot
-updateProfile(fanID, profile) async
+init(sensorProvider, externalController?, profileStore, clock, policy)
+start(revertManualProfiles) async -> Bool
+snapshot() -> CoolingSnapshot
+snapshotUpdates() -> AsyncStream<CoolingSnapshot>
+updateProfile(fanID, profile, applyNow) async
 updatePreferences(preferences) async
+currentPreferences() -> AppPreferences
 refreshNow() async
 shutdown() async
 ```
 
 - Sole owner of mutable sensor, device, profile, and policy state.
 - Publishes immutable snapshots; does not expose hardware transports.
-- Applies external-first ordering and all global safety overrides.
-- When a verified controllable cooler is connected and write-ready, applies its maximum request first and sends related automatic built-in increases only after a matching acknowledgement. A failed required request suppresses those increases for the cycle. A disconnected or capability-limited cooler is treated as unavailable and not active, but does not block an otherwise eligible validated built-in Hot increase.
-- When a selected Auto source becomes stale or missing, discards the reading, requests verified external maximum only if the cooler is write-ready, emits no external write otherwise, and restores every built-in fan to Auto.
-- `shutdown` requests restore-all and never blocks application termination indefinitely.
+- `start(revertManualProfiles: true)` is passed after an unclean exit: every Manual profile is switched to Auto and saved before any hardware is touched, and the return value tells the UI whether to show the recovery notice.
+- `refreshNow` coalesces: while a refresh is running, further requests schedule exactly one follow-up pass instead of interleaving hardware writes.
+- `updateProfile` validates against the current cooler state, saves, publishes the new profile immediately, and applies it on the next refresh; `applyNow: false` only saves (used while shutting down).
+- `updatePreferences` ignores the caller's copy of `profiles`; profiles are owned by `updateProfile`.
+- Applies the decision's `externalAction` to the cooler and logs, but never hides, a failed write.
+- `shutdown` cancels refreshing and calls `releaseControl()`; the app bounds the wait at 3 seconds and never blocks termination indefinitely.
 
 ## Deterministic test doubles
 
 - `TestClock` controls wall and monotonic time.
 - `MockSensorProvider` emits scripted batches, errors, and missing-key transitions.
-- `MockBuiltInFanReader` exposes arbitrary fan counts and incomplete capabilities.
-- `MockBuiltInFanController` records high-level target/Auto operations and restoration order.
-- `MockExternalCoolerController` records call order and scripts ACK, timeout, reject, attach, and detach.
-- `MockPrivilegedFanHelperClient` records validation, lease, disconnect, and restore behavior.
+- `MockExternalCoolerController` records call order and scripts ACK, timeout, reject, attach, detach, and release.
 - `MemoryProfileStore` supports round-trip and corrupt-data fixtures without touching user defaults.
+- `SessionMarker` accepts an injected `UserDefaults` suite so recovery tests never touch the real one.

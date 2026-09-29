@@ -1,17 +1,13 @@
 import Foundation
 import ThermalCore
 
-actor MockMonitoringBackend: SensorProvider, BuiltInFanReader {
+actor MockSensorBackend: SensorProvider {
     private var generation: UInt64 = 0
     private var tick = 0
     private let noSensors: Bool
-    private let helperAvailable: Bool
-    private let twoFans: Bool
 
-    init(noSensors: Bool = false, helperAvailable: Bool = true, twoFans: Bool = false) {
+    init(noSensors: Bool = false) {
         self.noSensors = noSensors
-        self.helperAvailable = helperAvailable
-        self.twoFans = twoFans
     }
 
     func readSensors() -> SensorBatch {
@@ -36,18 +32,4 @@ actor MockMonitoringBackend: SensorProvider, BuiltInFanReader {
             )
         })
     }
-
-    func listFans() -> [FanDeviceState] {
-        let names = twoFans ? ["Left fan", "Right fan"] : ["Mac fan"]
-        return names.enumerated().map { index, name in
-            FanDeviceState(
-                id: "builtin:\(index)", name: name, kind: .builtIn, connection: .connected,
-                currentSpeed: 2_100 + index * 180 + tick * 7 % 300, targetSpeed: nil, reportedMode: .auto,
-                capabilities: SpeedCapabilities(minimum: 1_200, maximum: 5_500 + index * 300, step: 10, provenance: .deviceVerified),
-                writeAvailability: helperAvailable ? .ready : .helperMissing,
-                statusMessage: helperAvailable ? nil : "Install the helper to enable built-in fan control"
-            )
-        }
-    }
 }
-

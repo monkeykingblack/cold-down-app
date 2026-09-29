@@ -1,8 +1,7 @@
 import SwiftUI
 import ThermalCore
-import IntelSMC
 
-/// Every fan as its own full-width card with its controls inline; nothing to select.
+/// The cooler as a full-width card with its controls inline; nothing to select.
 struct FansView: View {
     @Environment(AppModel.self) private var model
     @State private var highlightedFanID: String?
@@ -14,8 +13,8 @@ struct FansView: View {
                     if model.snapshot.fans.isEmpty {
                         DashboardCard {
                             VStack(alignment: .leading, spacing: 4) {
-                                Label("No fan telemetry", systemImage: "fan.slash").font(.headline)
-                                Text(Self.noFansExplanation).font(.caption).foregroundStyle(.secondary)
+                                Label("No cooler detected", systemImage: "snowflake.slash").font(.headline)
+                                Text("Connect a Flydigi BS-series cooler over USB or Bluetooth.").font(.caption).foregroundStyle(.secondary)
                             }
                         }
                     }
@@ -35,7 +34,7 @@ struct FansView: View {
         }
     }
 
-    /// Scrolls to the fan picked on the Overview or in the popover and briefly outlines its card.
+    /// Scrolls to the card picked on the Overview or in the popover and briefly outlines it.
     private func reveal(_ fanID: String?, with proxy: ScrollViewProxy) {
         guard let fanID, model.snapshot.fans.count > 1 else { return }
         withAnimation(.easeInOut(duration: 0.25)) { proxy.scrollTo(fanID, anchor: .top) }
@@ -45,8 +44,4 @@ struct FansView: View {
             if highlightedFanID == fanID { highlightedFanID = nil }
         }
     }
-
-    private static let noFansExplanation = HardwarePlatform.isAppleSilicon
-        ? "This Mac did not report any fans. MacBook Air models have no fan."
-        : "The System Management Controller did not report any readable fans on this Mac."
 }

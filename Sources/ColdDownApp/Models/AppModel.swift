@@ -18,60 +18,6 @@ enum AppTab: String, CaseIterable, Identifiable {
     }
 }
 
-/// One user-facing helper state, derived from both SMAppService registration and the live XPC lease.
-enum HelperDisplayStatus: Equatable {
-    case available, requiresApproval, notInstalled, notResponding, unavailable
-
-    /// Short status in the sidebar, phrased as what the user can do rather than which component is running.
-    var sidebarText: String {
-        switch self {
-        case .available: "Fan control on"
-        case .requiresApproval: "Fan control needs approval"
-        case .notInstalled: "Monitoring only"
-        case .notResponding: "Fan control unavailable"
-        case .unavailable: "Monitoring only"
-        }
-    }
-
-    /// One-line explanation shown on hover and in Settings.
-    var explanation: String {
-        switch self {
-        case .available: "Cold Down can set built-in fan speeds. Temperatures are monitored either way."
-        case .requiresApproval: "Turn on Cold Down in System Settings › General › Login Items to control built-in fans."
-        case .notInstalled: "Temperatures and fan speeds are shown. Install fan control in Settings to change built-in fan speeds."
-        case .notResponding: "The fan control service is installed but not answering. Reinstall it in Settings."
-        case .unavailable: "Temperatures and fan speeds are shown, but built-in fans can't be controlled on this setup."
-        }
-    }
-
-    var settingsText: String {
-        switch self {
-        case .available: "On"
-        case .requiresApproval: "Needs approval"
-        case .notInstalled: "Not installed"
-        case .notResponding: "Not responding"
-        case .unavailable: "Unavailable"
-        }
-    }
-
-    var symbol: String {
-        switch self {
-        case .available: "fan.fill"
-        case .requiresApproval: "exclamationmark.circle"
-        case .notResponding: "exclamationmark.triangle"
-        case .notInstalled, .unavailable: "eye"
-        }
-    }
-
-    var tint: Color {
-        switch self {
-        case .available: .green
-        case .requiresApproval, .notResponding: .orange
-        case .notInstalled, .unavailable: .secondary
-        }
-    }
-}
-
 @MainActor
 @Observable
 final class AppModel {
@@ -89,7 +35,7 @@ final class AppModel {
     /// Notices the user dismissed this session (by message identity).
     private(set) var dismissedBanners: Set<String> = []
     private let sessionMarker = SessionMarker()
-    /// Recent hottest-temperature and per-fan speed samples for dashboard sparklines. The span follows the
+    /// Recent hottest-temperature and cooler speed samples for dashboard sparklines. The span follows the
     /// refresh interval — 150 samples is about 12 minutes at the default 5 s — and the chart says which.
     private(set) var temperatureHistory: [Double] = []
     private(set) var fanSpeedHistory: [String: [Double]] = [:]
@@ -100,62 +46,56 @@ final class AppModel {
     @ObservationIgnored private var pendingProfiles: [String: FanProfile] = [:]
     @ObservationIgnored private var profileCommitTask: Task<Void, Never>?
 
-    let helperRegistration = HelperRegistrationService()
     static let colorfulMenuBarIconKey = "ColdDown.colorfulMenuBarIcon"
     /// Stored outside `AppPreferences` so older saved preferences keep decoding.
     var colorfulMenuBarIcon = UserDefaults.standard.object(forKey: AppModel.colorfulMenuBarIconKey) as? Bool ?? true {
         didSet { UserDefaults.standard.set(colorfulMenuBarIcon, forKey: Self.colorfulMenuBarIconKey) }
     }
     let launchAtLogin = LaunchAtLoginService()
+    /// The real BS3 Pro, for settings outside speed control; nil in mock mode.
+    @ObservationIgnored private var flydigi: BS3ProController?
+    private(set) var flydigiGearSpeeds: [Int]?
+    private(set) var flydigiSettingError: String?
+    static let flydigiAccelerationKey = "ColdDown.flydigi.acceleration"
+    static let flydigiSleepBehaviorKey = "ColdDown.flydigi.sleepBehavior"
+    /// The cooler cannot report these, so the app shows what it last set (nil until the user picks one).
+    private(set) var flydigiAcceleration = (UserDefaults.standard.object(forKey: AppModel.flydigiAccelerationKey) as? Int)
+        .flatMap { FlydigiAcceleration(rawValue: UInt8($0)) }
+    private(set) var flydigiSleepBehavior = (UserDefaults.standard.object(forKey: AppModel.flydigiSleepBehaviorKey) as? Int)
+        .flatMap { FlydigiSleepBehavior(rawValue: UInt8($0)) }
     private let coordinator: CoolingCoordinator
-    private let usesMockHelper: Bool
+    private let usesMockHardware: Bool
     /// Cancelled from `deinit`, which is nonisolated. A `Task` handle is `Sendable` and cancellation is safe
     /// from any thread; nothing else touches this from off the main actor.
     @ObservationIgnored private nonisolated(unsafe) var snapshotTask: Task<Void, Never>?
 
     init() {
-        if LaunchOption.mockMode {
-            let monitoring = MockMonitoringBackend(
-                noSensors: LaunchOption.noSensors,
-                helperAvailable: !LaunchOption.helperUnavailable,
-                twoFans: LaunchOption.twoFans
-            )
-            let names = LaunchOption.twoFans ? ["Left fan", "Right fan"] : ["Mac fan"]
-            let builtInStates = names.enumerated().map { index, name in
-                FanDeviceState(
-                    id: "builtin:\(index)", name: name, kind: .builtIn, connection: .connected,
-                    currentSpeed: 2_200 + index * 180, reportedMode: .auto,
-                    capabilities: SpeedCapabilities(minimum: 1_200, maximum: 5_500 + index * 300, step: 10, provenance: .deviceVerified),
-                    writeAvailability: LaunchOption.helperUnavailable ? .helperMissing : .ready
-                )
-            }
-            let builtIn = MockBuiltInCoolingBackend(fans: builtInStates)
+        // Hosted unit tests launch the real app as their host and it is killed, not quit, when they finish, so it
+        // must never take over a real cooler: the release command would not be sent and the cooler would be
+        // left in realtime mode at the last target.
+        if LaunchOption.mockMode || LaunchOption.runningTests {
+            let sensors = MockSensorBackend(noSensors: LaunchOption.noSensors)
             let external = MockExternalCoolingBackend(
                 disconnected: LaunchOption.coolerDisconnected,
                 capabilityLimited: LaunchOption.capabilityLimitedCooler
             )
             coordinator = CoolingCoordinator(
-                sensorProvider: monitoring, fanReader: monitoring,
-                builtInController: LaunchOption.helperUnavailable ? nil : builtIn,
-                externalController: external,
-                helperClient: LaunchOption.helperUnavailable ? nil : builtIn,
+                sensorProvider: sensors, externalController: external,
                 // In memory only: mock launches (and the UI tests using them) must start from the same state.
                 profileStore: MemoryProfileStore()
             )
-            usesMockHelper = true
+            usesMockHardware = true
         } else {
             let sensorProvider = PlatformSensorProvider()
-            let fanReader = AppleSMCFanReader()
-            let helper = XPCPrivilegedHelperClient(disabled: LaunchOption.helperUnavailable)
             let transport = FlydigiHIDTransport()
             // Range and protocol audited against THRM's BS-series implementation.
             let external = BS3ProController(transport: transport, capabilities: BS3ProController.auditedCapabilities)
+            flydigi = external
             coordinator = CoolingCoordinator(
-                sensorProvider: sensorProvider, fanReader: fanReader,
-                builtInController: helper, externalController: external, helperClient: helper,
+                sensorProvider: sensorProvider, externalController: external,
                 profileStore: UserDefaultsProfileStore()
             )
-            usesMockHelper = false
+            usesMockHardware = false
         }
         // `@Observable` tracks the nested services' properties through the views that read them, so the
         // change forwarding this used to need is gone.
@@ -163,27 +103,11 @@ final class AppModel {
 
     deinit { snapshotTask?.cancel() }
 
-    var helperDisplayStatus: HelperDisplayStatus {
-        if usesMockHelper {
-            return snapshot.helperStatus == .healthy ? .available : .unavailable
-        }
-        switch helperRegistration.status {
-        case .requiresApproval: return .requiresApproval
-        case .notRegistered: return .notInstalled
-        case .unavailable, .interrupted: return .unavailable
-        case .healthy: return snapshot.helperStatus == .healthy ? .available : .notResponding
-        }
-    }
-
     func start() {
         guard snapshotTask == nil else { return }
-        let tracksSession = !usesMockHelper && !LaunchOption.runningTests
+        let tracksSession = !usesMockHardware && !LaunchOption.runningTests
         let previousSessionWasUnclean = tracksSession && sessionMarker.begin()
         refreshSystemStatus()
-        if !usesMockHelper, !LaunchOption.helperUnavailable, !LaunchOption.runningTests {
-            let registration = helperRegistration
-            Task { await registration.registerOnFirstLaunchIfNeeded() }
-        }
         let coordinator = self.coordinator
         snapshotTask = Task { [weak self] in
             let reverted = await coordinator.start(revertManualProfiles: previousSessionWasUnclean)
@@ -198,11 +122,11 @@ final class AppModel {
         }
     }
 
-    /// Stops refreshing and returns built-in fans to system control, waiting at most `timeout`.
+    /// Stops refreshing and hands the cooler back to its own control, waiting at most `timeout`.
     func shutdown(timeout: Duration = .seconds(3)) async {
         snapshotTask?.cancel()
         snapshotTask = nil
-        // Keep the user's last choice, without applying it to hardware that is about to be restored.
+        // Keep the user's last choice, without applying it to hardware that is about to be released.
         profileCommitTask?.cancel()
         let pending = pendingProfiles
         pendingProfiles = [:]
@@ -216,20 +140,16 @@ final class AppModel {
             await group.next()
             group.cancelAll()
         }
-        if !usesMockHelper, !LaunchOption.runningTests { sessionMarker.end() }
+        if !usesMockHardware, !LaunchOption.runningTests { sessionMarker.end() }
     }
 
     private func apply(_ refreshed: CoolingSnapshot) {
-        let helperStatusChanged = refreshed.helperStatus != snapshot.helperStatus
         if refreshed.generatedAt != snapshot.generatedAt { recordHistory(refreshed) }
         snapshot = withPendingProfiles(refreshed)
         if selectedFanID.map({ id in !refreshed.fans.contains { $0.id == id } }) ?? true {
             selectedFanID = refreshed.fans.first?.id
         }
         if !isReady { isReady = true }
-        // While waiting for approval, keep checking so fan control turns on as soon as the user approves,
-        // even if Cold Down is only in the menu bar and never becomes active again.
-        if helperStatusChanged || helperRegistration.status == .requiresApproval { helperRegistration.refresh() }
     }
 
     private func recordHistory(_ snapshot: CoolingSnapshot) {
@@ -246,7 +166,6 @@ final class AppModel {
 
     /// Re-reads SMAppService state; call on activation rather than on every refresh (each read is an IPC).
     func refreshSystemStatus() {
-        helperRegistration.refresh()
         launchAtLogin.refresh()
         syncLaunchAtLoginPreference()
     }
@@ -261,12 +180,9 @@ final class AppModel {
         destination = .fans
     }
 
+    /// The saved profile, or the same default the policy follows until one is saved.
     func profile(for fan: FanDeviceState) -> FanProfile {
-        snapshot.profiles[fan.id] ?? FanProfile(
-            selectedSensor: snapshot.sensors.calculated[.cpuAverage] == nil
-                ? .calculated(.hottest) : .calculated(.cpuAverage),
-            manualTarget: fan.currentSpeed ?? fan.capabilities?.minimum ?? 1
-        ).validated(for: fan)
+        snapshot.profiles[fan.id] ?? FanProfile.suggested(for: fan, summary: snapshot.sensors)
     }
 
     func updateProfile(fanID: String, profile: FanProfile) {
@@ -299,6 +215,49 @@ final class AppModel {
         let value = preferences
         let coordinator = self.coordinator
         Task { await coordinator.updatePreferences(value) }
+    }
+
+    var supportsFlydigiSettings: Bool { flydigi != nil }
+
+    var flydigiConnected: Bool {
+        flydigi != nil && snapshot.fans.contains { $0.connection == .connected }
+    }
+
+    func refreshFlydigiGearSpeeds() async {
+        guard let flydigi, flydigiConnected else { flydigiGearSpeeds = nil; return }
+        flydigiGearSpeeds = try? await flydigi.gearSpeeds()
+    }
+
+    func setFlydigiAcceleration(_ level: FlydigiAcceleration) {
+        applyFlydigiSetting { try await $0.setAcceleration(level) } onSuccess: { model in
+            model.flydigiAcceleration = level
+            UserDefaults.standard.set(Int(level.rawValue), forKey: Self.flydigiAccelerationKey)
+        }
+    }
+
+    func setFlydigiSleepBehavior(_ behavior: FlydigiSleepBehavior) {
+        applyFlydigiSetting { try await $0.setSleepBehavior(behavior) } onSuccess: { model in
+            model.flydigiSleepBehavior = behavior
+            UserDefaults.standard.set(Int(behavior.rawValue), forKey: Self.flydigiSleepBehaviorKey)
+        }
+    }
+
+    /// Sent only when the user picks a value: these settings live in the cooler, so nothing is replayed on connect.
+    private func applyFlydigiSetting(
+        _ send: @escaping @Sendable (BS3ProController) async throws -> Void,
+        onSuccess: @escaping @MainActor (AppModel) -> Void
+    ) {
+        guard let flydigi else { return }
+        Task { [weak self] in
+            do {
+                try await send(flydigi)
+                guard let self else { return }
+                onSuccess(self)
+                self.flydigiSettingError = nil
+            } catch {
+                self?.flydigiSettingError = "The cooler did not accept the setting. Check that it is connected and try again."
+            }
+        }
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {

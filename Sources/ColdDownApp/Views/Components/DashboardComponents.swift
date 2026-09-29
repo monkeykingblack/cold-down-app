@@ -50,27 +50,6 @@ enum Dashboard {
         }
     }
 
-    enum FanActivity: Equatable {
-        /// Waiting for the hardware to follow a mode change (Apple Silicon takeover can take a few seconds).
-        case transitioning(String)
-        /// Auto profile, but Cold Down's curve is deliberately driving the fan above the threshold.
-        case boosting(String)
-    }
-
-    static func activity(fan: FanDeviceState, profile: FanProfile?, decision: CoolingDecision?) -> FanActivity? {
-        guard fan.kind == .builtIn, fan.connection == .connected, fan.writeAvailability == .ready,
-              let profile, let reported = fan.reportedMode else { return nil }
-        let curveIsDriving: Bool = {
-            if case .target = decision?.builtInActions[fan.id] { return true }
-            return false
-        }()
-        if profile.mode == .auto, curveIsDriving {
-            return .boosting("Boosting — above your \(profile.thresholdCelsius) °C threshold")
-        }
-        guard reported != profile.mode else { return nil }
-        return .transitioning(profile.mode == .manual ? "Taking control…" : "Returning to Auto…")
-    }
-
     /// Position of a fan's current speed within its safe range, when known.
     static func speedFraction(_ fan: FanDeviceState) -> Double? {
         guard let speed = fan.currentSpeed, let capabilities = fan.capabilities,
@@ -323,34 +302,5 @@ extension View {
         } else {
             self
         }
-    }
-}
-
-/// Small status line under a fan: a spinner while switching modes, a bolt while the Auto curve boosts.
-struct FanActivityLine: View {
-    let activity: Dashboard.FanActivity
-    /// Icon only (text in the tooltip), for tight rows such as the popover.
-    var compact = false
-
-    private var text: String {
-        switch activity {
-        case let .transitioning(text), let .boosting(text): text
-        }
-    }
-
-    var body: some View {
-        HStack(spacing: 5) {
-            switch activity {
-            case .transitioning: ProgressView().controlSize(.mini)
-            case .boosting: Image(systemName: "bolt.fill").foregroundStyle(.orange)
-            }
-            if !compact { Text(text) }
-        }
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .lineLimit(1)
-        .help(text)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(text)
     }
 }

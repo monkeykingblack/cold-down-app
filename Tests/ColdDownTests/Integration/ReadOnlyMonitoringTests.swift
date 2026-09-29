@@ -2,30 +2,28 @@ import XCTest
 import ThermalCore
 
 final class ReadOnlyMonitoringTests: XCTestCase {
-    func testNoHelperAndDisconnectedCoolerStillPublishMonitoringSnapshot() async {
+    func testDisconnectedCoolerStillPublishesMonitoringSnapshot() async {
         let batch = SensorBatch(generation: 1, sampledAt: Fixtures.now, readings: [Fixtures.reading("TC0P", 65)])
-        let fan = FanDeviceState(
-            id: "builtin:0", name: "Mac fan", kind: .builtIn, connection: .connected,
-            currentSpeed: 2_000, capabilities: Fixtures.builtIn().capabilities,
-            writeAvailability: .helperMissing
-        )
+        let external = MockExternalController(Fixtures.external(availability: .disconnected))
         let coordinator = CoolingCoordinator(
-            sensorProvider: MockSensorProvider([batch]), fanReader: MockFanReader([fan]),
-            externalController: MockExternalController(Fixtures.external(availability: .disconnected)),
+            sensorProvider: MockSensorProvider([batch]), externalController: external,
             profileStore: MemoryProfileStore(), clock: ManualThermalClock(now: Fixtures.now)
         )
         await coordinator.start()
         let snapshot = await coordinator.snapshot()
-        XCTAssertEqual(snapshot.helperStatus, .unavailable)
+        XCTAssertEqual(snapshot.overallMode, .readOnly)
         XCTAssertEqual(snapshot.sensors.hottestReading?.valueCelsius, 65)
-        XCTAssertEqual(snapshot.fans.count, 2)
+        XCTAssertEqual(snapshot.fans.count, 1)
+        XCTAssertEqual(snapshot.fans.first?.connection, .disconnected)
+        let targets = await external.recordedTargets()
+        XCTAssertTrue(targets.isEmpty, "A disconnected cooler is never written to")
         await coordinator.shutdown()
     }
 
     func testNoRecognizedSensorsRemainsRepresentable() async {
         let batch = SensorBatch(generation: 1, sampledAt: Fixtures.now, readings: [])
         let coordinator = CoolingCoordinator(
-            sensorProvider: MockSensorProvider([batch]), fanReader: MockFanReader([]),
+            sensorProvider: MockSensorProvider([batch]),
             profileStore: MemoryProfileStore(), clock: ManualThermalClock(now: Fixtures.now)
         )
         await coordinator.start()

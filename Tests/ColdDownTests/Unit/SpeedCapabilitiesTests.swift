@@ -1,7 +1,7 @@
 import XCTest
 import ThermalCore
 
-final class BuiltInFanReaderTests: XCTestCase {
+final class SpeedCapabilitiesTests: XCTestCase {
     func testCapabilityValidationRejectsUnsafeRanges() {
         XCTAssertFalse(SpeedCapabilities(minimum: 0, maximum: 5_000, provenance: .deviceVerified).isStructurallyValid)
         XCTAssertFalse(SpeedCapabilities(minimum: 2_000, maximum: 1_000, provenance: .deviceVerified).isStructurallyValid)

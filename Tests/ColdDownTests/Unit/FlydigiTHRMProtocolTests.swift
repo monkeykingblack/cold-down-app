@@ -75,6 +75,40 @@ final class FlydigiTHRMProtocolTests: XCTestCase {
         XCTAssertEqual(applied.target, 4_000)
     }
 
+    /// Frames captured from a BS3 Pro (firmware 2.4).
+    func testGearSpeedsDecodeTheCapturedReply() async throws {
+        var reply = try FlydigiPacketCodec.encode(command: .queryGearSpeeds, payload: Data([0xA4, 0x06, 0x60, 0x09, 0xB8, 0x0B, 0x74, 0x0E]))
+        reply[0] = 0x01
+        let transport = ScriptedReportTransport([.data(reply)])
+        let controller = BS3ProController(transport: transport, capabilities: BS3ProController.auditedCapabilities)
+        let speeds = try await controller.gearSpeeds()
+        XCTAssertEqual(speeds, [1_700, 2_400, 3_000, 3_700])
+        let sent = await transport.sentReports()
+        XCTAssertEqual(Array(sent[0].prefix(6)), [0x02, 0x5A, 0xA5, 0x27, 0x02, 0x29])
+    }
+
+    func testAccelerationAndSleepBehaviorMatchTheCapturedRequests() async throws {
+        let transport = ScriptedReportTransport([
+            .data(try reply(.setAcceleration, 0x01)), .data(try reply(.setSleepBehavior, 0x01))
+        ])
+        let controller = BS3ProController(transport: transport, capabilities: BS3ProController.auditedCapabilities)
+        try await controller.setAcceleration(.level4)
+        try await controller.setSleepBehavior(.stopAfterDelay)
+        let sent = await transport.sentReports()
+        XCTAssertEqual(Array(sent[0].prefix(7)), [0x02, 0x5A, 0xA5, 0x2A, 0x03, 0x03, 0x30])
+        XCTAssertEqual(Array(sent[1].prefix(7)), [0x02, 0x5A, 0xA5, 0x0D, 0x03, 0x02, 0x12])
+    }
+
+    func testRejectedSettingIsReportedAsAFailure() async throws {
+        let rejected = try reply(.setAcceleration, 0x00)
+        let transport = ScriptedReportTransport([.data(rejected), .data(rejected), .data(rejected)])
+        let controller = BS3ProController(transport: transport, capabilities: BS3ProController.auditedCapabilities)
+        do {
+            try await controller.setAcceleration(.level2)
+            XCTFail("A rejected setting must throw")
+        } catch {}
+    }
+
     private func reply(_ command: FlydigiCommand, _ status: UInt8) throws -> Data {
         var data = try FlydigiPacketCodec.encode(command: command, payload: Data([status]))
         data[0] = 0x01  // input report ID

@@ -4,6 +4,19 @@ import ThermalCore
 enum Fixtures {
     static let now = Date(timeIntervalSince1970: 10_000)
 
+    /// A throwaway defaults suite. Call `cleanUp` (usually in `defer`): removing the domain alone leaves its
+    /// plist behind in ~/Library/Preferences, one per test run.
+    static func temporaryDefaults(_ prefix: String) -> (defaults: UserDefaults, suite: String, cleanUp: () -> Void) {
+        let suite = "\(prefix).\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        return (defaults, suite, {
+            defaults.removePersistentDomain(forName: suite)
+            let file = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent("Library/Preferences/\(suite).plist")
+            try? FileManager.default.removeItem(at: file)
+        })
+    }
+
     static func reading(
         _ key: String,
         _ value: Double?,
@@ -25,26 +38,13 @@ enum Fixtures {
         )
     }
 
-    static func builtIn(
-        id: String = "builtin:0",
-        current: Int = 2_000,
-        availability: WriteAvailability = .ready
-    ) -> FanDeviceState {
-        FanDeviceState(
-            id: id, name: "Mac fan", kind: .builtIn, connection: .connected,
-            currentSpeed: current, capabilities: SpeedCapabilities(
-                minimum: 1_200, maximum: 5_000, step: 10, provenance: .deviceVerified
-            ), writeAvailability: availability
-        )
-    }
-
     static func external(
         availability: WriteAvailability = .ready,
         provenance: CapabilityProvenance = .deterministicMock,
         stop: Bool = false
     ) -> FanDeviceState {
         FanDeviceState(
-            id: "flydigi:37d7:1004", name: "Flydigi BS3 Pro", kind: .external,
+            id: "flydigi:37d7:1004", name: "Flydigi BS3 Pro",
             connection: availability == .disconnected ? .disconnected : .connected,
             currentSpeed: 1_700, capabilities: SpeedCapabilities(
                 minimum: 1_300, maximum: 4_000, step: 100,

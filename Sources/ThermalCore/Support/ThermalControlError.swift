@@ -8,7 +8,6 @@ public enum ThermalControlError: Error, LocalizedError, Equatable, Sendable {
     case timeout
     case disconnected
     case acknowledgementRejected
-    case unauthorized
 
     public var errorDescription: String? {
         switch self {
@@ -18,7 +17,6 @@ public enum ThermalControlError: Error, LocalizedError, Equatable, Sendable {
         case .timeout: "The hardware request timed out."
         case .disconnected: "The device is disconnected."
         case .acknowledgementRejected: "The device rejected the request."
-        case .unauthorized: "Privileged control is not authorized."
         }
     }
 }

@@ -49,51 +49,49 @@ An immutable aggregation generated for one refresh cycle:
 
 Each average uses only fresh valid members. An empty member set yields no calculated reading rather than zero.
 
-## FanCapabilities
+## SpeedCapabilities
 
 | Field | Type | Rules |
 |-------|------|-------|
-| `minimum` | Int | Built-in minimum must be greater than zero |
+| `minimum` | Int | Greater than zero unless a verified stop is supported, in which case zero is allowed |
 | `maximum` | Int | Must be greater than or equal to minimum |
 | `step` | Int | Positive supported increment; required for adjustable writes |
-| `unit` | SpeedUnit | RPM or discrete level |
-| `verification` | CapabilityVerification | Unverified, deviceVerified, auditedModel, or deterministicMock |
-| `supportsAuto` | Bool | Built-in true; external true only for application policy, not device firmware mode |
-| `supportsSafeStop` | Bool | False for BS3 Pro until physically verified |
-| `canReadTarget` | Bool | Reflects current hardware capability |
+| `unit` | String | RPM by default |
+| `provenance` | CapabilityProvenance | Unverified, deviceVerified, auditedModel, or deterministicMock |
+| `supportsVerifiedStop` | Bool | False for BS3 Pro until physically verified |
 
-Missing bounds, a non-positive built-in minimum, maximum below minimum, a non-positive or unsupported step, stale capability data, or inconsistent fan identity/count disable writes while retaining read-only state. Equal positive minimum and maximum is a valid fixed capability with no adjustable slider. Real external writes require deviceVerified or auditedModel provenance; deterministicMock is accepted only by mock transport, and unverified produces a capabilityLimited state.
+Missing bounds, a non-positive minimum, maximum below minimum, or a non-positive or unsupported step make the capability structurally invalid: writes are disabled while read-only state is retained. Equal positive minimum and maximum is a valid fixed capability with no adjustable slider. Real writes require deviceVerified or auditedModel provenance; deterministicMock is accepted only by the mock transport, and unverified produces a capabilityLimited state. `clamped(_:)` bounds a value, rounds it to the step from the minimum, and bounds it again.
+
+The audited BS3 Pro capability is 1,000–4,000 RPM in 50 RPM steps.
 
 ## FanDeviceState
 
 | Field | Type | Rules |
 |-------|------|-------|
-| `id` | Stable string | Built-in uses discovered index plus hardware domain; BS3 Pro uses model identity |
+| `id` | Stable string | BS3 Pro uses vendor and product identity, e.g. `flydigi:37d7:1004` |
 | `name` | String | Human-readable English name |
-| `kind` | FanKind | Built-in or external |
-| `connection` | ConnectionState | Connected, disconnected, or unavailable |
-| `capabilities` | FanCapabilities | Required when writes are enabled |
-| `currentSpeed` | Optional Int | RPM or level using capability unit |
-| `targetSpeed` | Optional Int | Present only when readable/known |
-| `reportedMode` | Optional mode | macOS Auto, forced, external real-time, or unknown |
-| `writeAvailability` | WriteAvailability | Ready or a reason such as helper missing, disconnected, capabilityLimited, invalid capabilities, or awaiting ACK |
-| `updatedAt` | Date | Used for presentation freshness |
+| `connection` | ConnectionState | Connected or disconnected |
+| `currentSpeed` | Optional Int | Measured RPM from the device's status pushes |
+| `targetSpeed` | Optional Int | Present only when a target has been acknowledged |
+| `reportedMode` | Optional FanControlMode | Auto when the device runs one of its own gears, Manual when the host holds realtime control |
+| `capabilities` | Optional SpeedCapabilities | Required when writes are enabled |
+| `writeAvailability` | WriteAvailability | Ready, disconnected, capabilityLimited, invalidCapabilities, or awaitingAcknowledgement |
+| `statusMessage` | Optional String | One concise connection or capability message for the interface |
 
-Disconnected known external devices remain in the snapshot and retain their profile.
+A disconnected cooler remains in the snapshot and retains its profile.
 
 ## FanProfile
 
 | Field | Type | Rules |
 |-------|------|-------|
-| `fanID` | String | References a FanDeviceState identity |
-| `mode` | ProfileMode | Auto or Manual |
-| `sensorSelection` | SensorSelection | Physical ID, CPU average, GPU average, all average, or hottest |
-| `thresholdCelsius` | Int | Inclusive 45...85 in 1 °C steps; default 72; starts Warm |
-| `manualTarget` | Int | Clamped to current fan capabilities before use |
+| `mode` | FanControlMode | Auto or Manual |
+| `selectedSensor` | SensorSelection | Physical ID, CPU average, GPU average, all average, or hottest |
+| `thresholdCelsius` | Int | Inclusive 45...85 in 1 °C steps; default 65; starts Warm |
+| `manualTarget` | Int | Clamped to current cooler capabilities before use |
 
-Default selection is the hottest fresh valid physical CPU sensor, falling back to the hottest fresh valid sensor when no CPU sensor exists. All-sensor average is selectable but never the default.
+Profiles are stored in `AppPreferences.profiles` keyed by the cooler's `FanDeviceState.id`. `validated(for:)` re-clamps the threshold and manual target against the current capabilities. `suggested(for:summary:)` is what the cooler follows until a profile is saved: Auto on the CPU average, or the hottest reading when no CPU sensor exists, with the current speed (or the minimum) as the Manual starting point. All-sensor average is selectable but never the default.
 
-State transitions: `Auto ↔ Manual` by explicit user action. A built-in Manual profile becomes `suspended` on startup, helper loss, total sensor loss, sleep/wake, invalid capabilities, or critical policy; suspension restores hardware Auto but does not erase the saved profile.
+State transitions: `Auto ↔ Manual` by explicit user action. On a launch that follows an unclean exit every Manual profile becomes Auto with its target retained (see SessionMarker). Disconnection, capability limitation, or critical policy does not change the saved profile.
 
 ## AppPreferences
 
@@ -101,22 +99,30 @@ State transitions: `Auto ↔ Manual` by explicit user action. A built-in Manual 
 |-------|------|----------------------|
 | `schemaVersion` | Int | Current known version only; migrate or fall back safely |
 | `profiles` | Map fanID → FanProfile | Validate against current devices and sensors |
-| `refreshIntervalSeconds` | Double | Default 2; clamp to 1...30 |
+| `refreshInterval` | TimeInterval | Default 2; clamp to 1...30 |
 | `showTemperatureInMenuBar` | Bool | Default true |
-| `launchAtLogin` | Bool | Mirrors registered main-app service status |
+| `launchAtLogin` | Bool | Mirrors the registered main-app login-item status |
 | `automaticFlydigiReconnect` | Bool | Default true |
 
-Corrupt envelopes produce defaults and a non-private diagnostic log entry.
+Corrupt envelopes produce defaults and a non-private diagnostic log entry. `updatePreferences` never writes back the caller's copy of `profiles`; profiles are owned by `updateProfile`.
+
+## SessionMarker
+
+| Field | Type | Rules |
+|-------|------|-------|
+| `sessionActive` | Bool in `UserDefaults` | Set when a session begins; cleared only after a normal quit has released the cooler |
+
+`begin()` returns whether the previous session ended uncleanly and sets the flag; `end()` clears it. A crash, force quit, or power loss leaves it set, which makes the next `CoolingCoordinator.start(revertManualProfiles: true)` switch every Manual profile to Auto before any hardware is touched.
 
 ## ThermalBand and CoolingDecision
 
-`ThermalBand`: Cool, Warm, Hot, Critical, or SafetyFallback.
+`ThermalBand`: Cool, Warm, Hot, SafetyFallback, or Critical.
 
 - Cool: selected temperature below its threshold.
 - Warm: threshold through less than threshold +10 °C.
-- Hot: threshold +10 °C through less than 95 °C, except threshold 85 has no non-critical Hot interval.
-- Critical: any fresh valid physical or calculated reading at 95 °C or above, regardless of profile selection.
-- SafetyFallback: controlling reading unusable, total sensor loss during built-in Manual, or control-channel failure. A missing or stale selected Auto source discards the unusable reading, requests verified external maximum only when the cooler is write-ready, sends no external write otherwise, and restores all built-in fans to Auto.
+- Hot: threshold +10 °C and above, except threshold 85 has no non-critical Hot interval.
+- SafetyFallback: the controlling reading is unusable. The unusable reading is discarded and a write-ready cooler is set to its verified maximum.
+- Critical: any fresh valid physical or calculated reading at 95 °C or above, regardless of profile mode or selection.
 
 Precedence is `Critical > SafetyFallback > Hot > Warm > Cool`.
 
@@ -124,29 +130,31 @@ Precedence is `Critical > SafetyFallback > Hot > Warm > Cool`.
 
 | Field | Type | Rules |
 |-------|------|-------|
-| `fanID` | String | Deterministic final tie-breaker |
-| `sensorID` | SensorIdentity.ID | Must resolve to a fresh valid selected source |
+| `fanID` | String | The cooler's identity |
 | `temperatureCelsius` | Double | The accepted current value |
 | `thresholdCelsius` | Int | Validated 45...85 |
 | `band` | ThermalBand | Cool, Warm, or Hot before global overrides |
-| `normalizedProgress` | Double | Finite value clamped to 0...1 within the active ramp |
+| `normalizedProgress` | Double | Finite value clamped to 0...1 within the Warm ramp |
 
-The system non-critical demand is the lexicographic maximum of `(band rank, normalizedProgress, fanID)` across active Auto profiles. External supplemental cooling follows that winning demand. Built-in targets remain profile-specific and are generated only for built-in profiles whose own demand is Hot.
+`ExternalCoolingAction` is `none`, `stop`, or `target(Int)`.
 
-`CoolingDecision` contains all evaluated demands, the winning demand, global override reason, external target and capability provenance, required external acknowledgement, per-built-in target actions, safety reason, and timestamp. It never contains raw SMC keys for writes or arbitrary HID bytes.
+`CoolingDecision` contains the `band`, the optional `demand`, the `externalAction`, an optional human-readable `reason`, and `evaluatedAt`. It never contains SMC keys or arbitrary HID bytes.
 
 For selected temperature `T`, threshold `θ`, and verified `[minimum, maximum]` with a positive step:
 
-- Warm external progress is `clamp((T - θ) / 10, 0...1)`; interpolate minimum-to-maximum, round to step, then clamp.
-- Hot holds external maximum. For an eligible built-in profile with `hotStart = θ + 10`, progress is `clamp((T - hotStart) / (95 - hotStart), 0...1)`; interpolate, round, clamp, then floor the request at current RPM.
-- Threshold 85 reaches Critical at its Hot boundary, so the built-in denominator is never evaluated.
-- If a verified controllable cooler is connected and write-ready, its acknowledged maximum is an ordering prerequisite for related built-in increases. A failed required acknowledgement suppresses those increases for the cycle. A disconnected or capability-limited cooler is unavailable, is never recorded as active, and does not block an otherwise eligible validated built-in Hot increase.
+- When the cooler is absent, disconnected, or capability-limited the action is `none`.
+- Critical: `target(maximum)` for a write-ready cooler.
+- Manual: `target(clamped(manualTarget))`.
+- SafetyFallback: `target(maximum)`.
+- Cool: `stop` only when `supportsVerifiedStop`, otherwise `target(minimum)`.
+- Warm: progress is `clamp((T - θ) / 10, 0...1)`; interpolate minimum-to-maximum, round to step, then clamp.
+- Hot: `target(maximum)`.
 
 ## ExternalCommandTransaction
 
 | Field | Type | Rules |
 |-------|------|-------|
-| `command` | Allowed command enum | Only 0x21, 0x22, 0x23, 0x25 |
+| `command` | Allowed command enum | Only 0x21, 0x22, 0x23, 0x24, 0x25 |
 | `payload` | Typed payload | Created by encoder, never supplied by UI |
 | `attempt` | Int | 1...3 |
 | `deadline` | Monotonic instant | 900 ms per attempt |
@@ -155,17 +163,10 @@ For selected temperature `T`, threshold `θ`, and verified `[minimum, maximum]` 
 
 Only one transaction may be active. Detach cancels it. Bad marker, length, checksum, command, or status frames cannot acknowledge it.
 
-## HelperLease
+## OverallControlMode
 
-| Field | Type | Rules |
-|-------|------|-------|
-| `clientIdentity` | Validated connection identity | Release must satisfy signing requirement |
-| `issuedAt` | Monotonic instant | Set after accepted connection and initial restore |
-| `expiresAt` | Monotonic instant | Eight seconds after last accepted renewal |
-| `state` | LeaseState | Inactive, active, expired, disconnected, invalidated |
-
-Any transition away from Active invokes restore-all before another target request may succeed. A new client cannot inherit the previous client's lease or manual state.
+`readOnly` ("Read only") when the cooler is absent, disconnected, or capability-limited; `automatic` or `manual` from the cooler's profile mode; `safetyFallback` whenever the decision band is Critical or SafetyFallback.
 
 ## CoolingSnapshot
 
-The coordinator's immutable UI projection containing SensorSummary, ordered fan states, validated profiles, helper status, external transaction status, overall mode, and latest safety message. Overview, Fans, Sensors, Settings, and MenuBarExtra read the same snapshot to avoid inconsistent displays.
+The coordinator's immutable UI projection containing `sensors` (SensorSummary), `fans` (the cooler only, or empty), `profiles`, `overallMode`, `lastDecision`, and `generatedAt`. Overview, Fans, Sensors, Settings, and the menu-bar popover read the same snapshot to avoid inconsistent displays.

@@ -64,13 +64,13 @@ struct MenuBarContentView: View {
         }
     }
 
-    // MARK: Fans
+    // MARK: Cooler
 
     @ViewBuilder
     private var fans: some View {
         if model.snapshot.fans.isEmpty {
             DashboardCard(padding: 10) {
-                Label("No fans detected", systemImage: "fan.slash").font(.callout).foregroundStyle(.secondary)
+                Label("No cooler detected", systemImage: "snowflake.slash").font(.callout).foregroundStyle(.secondary)
             }
         } else {
             VStack(spacing: 6) {
@@ -122,7 +122,7 @@ private struct MenuBarFanRow: View {
     private var connected: Bool { fan.connection == .connected }
     private var controllable: Bool { connected && fan.writeAvailability == .ready }
     private var unit: String { fan.capabilities?.unit ?? "RPM" }
-    private var tint: Color { fan.kind == .builtIn ? .accentColor : .cyan }
+    private var tint: Color { .cyan }
 
     var body: some View {
         DashboardCard(padding: 8) {
@@ -130,25 +130,18 @@ private struct MenuBarFanRow: View {
                 HStack(spacing: 8) {
                     ZStack {
                         SpeedRing(fraction: connected ? Dashboard.speedFraction(fan) : nil, tint: tint, lineWidth: 3)
-                        Image(systemName: fan.kind == .builtIn ? "fan" : "snowflake")
+                        Image(systemName: "snowflake")
                             .font(.system(size: 9, weight: .medium))
                             .foregroundStyle(connected ? tint : .secondary)
                     }
                     .frame(width: 22, height: 22)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(fan.name).font(.caption.weight(.medium)).lineLimit(1)
-                        HStack(spacing: 4) {
-                            Text(connected ? DisplayFormat.speed(fan.currentSpeed, unit: unit) : "Disconnected")
-                                .font(.caption2)
-                                .monospacedDigit()
-                                .foregroundStyle(.secondary)
-                                .numericTransition(value: fan.currentSpeed.map(Double.init))
-                            if let activity = Dashboard.activity(
-                                fan: fan, profile: model.snapshot.profiles[fan.id], decision: model.snapshot.lastDecision
-                            ) {
-                                FanActivityLine(activity: activity, compact: true)
-                            }
-                        }
+                        Text(connected ? DisplayFormat.speed(fan.currentSpeed, unit: unit) : "Disconnected")
+                            .font(.caption2)
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                            .numericTransition(value: fan.currentSpeed.map(Double.init))
                     }
                     Spacer(minLength: 6)
                     if connected {

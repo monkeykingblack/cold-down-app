@@ -1,13 +1,12 @@
 import Foundation
 
-public enum FanKind: String, Codable, Sendable { case builtIn, external }
 public enum ConnectionState: String, Codable, Sendable { case connected, disconnected }
 public enum FanControlMode: String, Codable, CaseIterable, Sendable { case auto, manual }
 public enum CapabilityProvenance: String, Codable, Sendable {
     case unverified, deviceVerified, auditedModel, deterministicMock
 }
 public enum WriteAvailability: String, Codable, Sendable {
-    case ready, helperMissing, disconnected, capabilityLimited, invalidCapabilities, awaitingAcknowledgement
+    case ready, disconnected, capabilityLimited, invalidCapabilities, awaitingAcknowledgement
 }
 
 public struct SpeedCapabilities: Codable, Hashable, Sendable {
@@ -54,7 +53,6 @@ public struct SpeedCapabilities: Codable, Hashable, Sendable {
 public struct FanDeviceState: Identifiable, Codable, Hashable, Sendable {
     public let id: String
     public let name: String
-    public let kind: FanKind
     public var connection: ConnectionState
     public var currentSpeed: Int?
     public var targetSpeed: Int?
@@ -66,7 +64,6 @@ public struct FanDeviceState: Identifiable, Codable, Hashable, Sendable {
     public init(
         id: String,
         name: String,
-        kind: FanKind,
         connection: ConnectionState,
         currentSpeed: Int? = nil,
         targetSpeed: Int? = nil,
@@ -77,7 +74,6 @@ public struct FanDeviceState: Identifiable, Codable, Hashable, Sendable {
     ) {
         self.id = id
         self.name = name
-        self.kind = kind
         self.connection = connection
         self.currentSpeed = currentSpeed
         self.targetSpeed = targetSpeed
@@ -109,7 +105,8 @@ public struct FanProfile: Codable, Hashable, Sendable {
     public init(
         mode: FanControlMode = .auto,
         selectedSensor: SensorSelection = .calculated(.cpuAverage),
-        thresholdCelsius: Int = 72,
+        // The cooler idles below this and ramps to full speed by +10 °C.
+        thresholdCelsius: Int = 65,
         manualTarget: Int = 2_000
     ) {
         self.mode = mode
@@ -125,6 +122,15 @@ public struct FanProfile: Codable, Hashable, Sendable {
             result.manualTarget = capabilities.clamped(manualTarget)
         }
         return result
+    }
+
+    /// What a fan follows until the user saves a profile for it: Auto on the CPU average (the hottest reading
+    /// on a Mac without CPU sensors), with the fan's current speed as the Manual starting point.
+    public static func suggested(for fan: FanDeviceState, summary: SensorSummary) -> FanProfile {
+        FanProfile(
+            selectedSensor: summary.calculated[.cpuAverage] == nil ? .calculated(.hottest) : .calculated(.cpuAverage),
+            manualTarget: fan.currentSpeed ?? fan.capabilities?.minimum ?? 1
+        ).validated(for: fan)
     }
 }
 
@@ -144,37 +150,26 @@ public struct ProfileDemand: Codable, Hashable, Sendable {
 public enum ExternalCoolingAction: Codable, Equatable, Sendable {
     case none
     case stop
-    case target(Int, requiresAcknowledgement: Bool)
-}
-
-public enum BuiltInCoolingAction: Codable, Equatable, Sendable {
-    case automatic
-    case target(Int, requiresExternalAcknowledgement: Bool)
+    case target(Int)
 }
 
 public struct CoolingDecision: Codable, Equatable, Sendable {
     public let band: ThermalBand
-    public let demands: [ProfileDemand]
-    public let winningDemand: ProfileDemand?
+    public let demand: ProfileDemand?
     public let externalAction: ExternalCoolingAction
-    public let builtInActions: [String: BuiltInCoolingAction]
     public let reason: String?
     public let evaluatedAt: Date
 
     public init(
         band: ThermalBand,
-        demands: [ProfileDemand] = [],
-        winningDemand: ProfileDemand? = nil,
+        demand: ProfileDemand? = nil,
         externalAction: ExternalCoolingAction = .none,
-        builtInActions: [String: BuiltInCoolingAction] = [:],
         reason: String? = nil,
         evaluatedAt: Date
     ) {
         self.band = band
-        self.demands = demands
-        self.winningDemand = winningDemand
+        self.demand = demand
         self.externalAction = externalAction
-        self.builtInActions = builtInActions
         self.reason = reason
         self.evaluatedAt = evaluatedAt
     }

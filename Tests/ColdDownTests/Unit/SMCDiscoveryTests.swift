@@ -20,5 +20,21 @@ final class SMCDiscoveryTests: XCTestCase {
         XCTAssertFalse(SMCSensorCatalog.looksLikeTemperature(key: "VC0C", type: "sp78"))
         XCTAssertTrue(SMCSensorCatalog.looksLikeTemperature(key: "TC9X", type: "sp78"))
     }
+
+    func testOnlyIntelPerCoreKeysFeedTheCPUAverage() {
+        for key in ["TC1C", "TC8C", "TC2c"] {
+            let core = SMCSensorCatalog.identity(for: key)
+            XCTAssertEqual(core.group, .cpu, key)
+            XCTAssertTrue(core.countsTowardAverage, key)
+        }
+        XCTAssertEqual(SMCSensorCatalog.identity(for: "TC3C").name, "CPU core 3")
+        for key in ["TC0P", "TC0F", "TCXC", "TCMX", "TCSA", "TC0T"] {
+            let other = SMCSensorCatalog.identity(for: key)
+            XCTAssertEqual(other.group, .cpu, key)
+            XCTAssertFalse(other.countsTowardAverage, key)
+        }
+        // Stats files the Intel iGPU under GPU, not CPU.
+        XCTAssertEqual(SMCSensorCatalog.identity(for: "TCGC").group, .gpu)
+    }
 }
 

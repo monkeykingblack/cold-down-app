@@ -70,11 +70,11 @@ struct OverviewView: View {
 
     private var fansSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            CardTitle(title: "Fans", systemImage: "fan")
+            CardTitle(title: "Cooler", systemImage: "snowflake")
                 .padding(.leading, 4)
             if model.snapshot.fans.isEmpty {
                 DashboardCard {
-                    Label("No fans detected", systemImage: "fan.slash").foregroundStyle(.secondary)
+                    Label("No cooler detected", systemImage: "snowflake.slash").foregroundStyle(.secondary)
                 }
             } else {
                 BalancedGrid(minItemWidth: 200) {
@@ -94,8 +94,7 @@ struct OverviewView: View {
 
     /// One row per sensor group in a fixed order, showing that group's hottest reading. Rows never reorder;
     /// only the values (and, occasionally, which sensor is hottest within a group) change. The section takes
-    /// whatever height the cards above leave it and flows its rows into extra columns to fit, so a Mac with
-    /// two built-in fans (one fan row more than a single-fan Mac) does not push the page past the window.
+    /// whatever height the cards above leave it and flows its rows into extra columns to fit.
     private var sensorsCard: some View {
         let hottestByGroup = model.snapshot.sensors.hottestByGroup
         let groups = SensorGroup.allCases.filter { hottestByGroup[$0] != nil }
@@ -203,14 +202,14 @@ struct FanCard: View {
 
     private var connected: Bool { fan.connection == .connected }
     private var unit: String { fan.capabilities?.unit ?? "RPM" }
-    private var tint: Color { fan.kind == .builtIn ? .accentColor : .cyan }
+    private var tint: Color { .cyan }
 
     var body: some View {
         DashboardCard(padding: 10, fillHeight: true) {
             HStack(spacing: 10) {
                 ZStack {
                     SpeedRing(fraction: connected ? Dashboard.speedFraction(fan) : nil, tint: tint)
-                    Image(systemName: fan.kind == .builtIn ? "fan" : "snowflake")
+                    Image(systemName: "snowflake")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(connected ? tint : .secondary)
                 }
@@ -237,16 +236,11 @@ struct FanCard: View {
                     Sparkline(values: history, tint: tint, minimumSpan: 200)
                         .frame(width: 48, height: 22)
                 }
-                Pill(text: modeText, tint: profile?.mode == .manual ? .blue : .secondary)
+                Pill(text: profile?.mode == .manual ? "Manual" : "Auto", tint: profile?.mode == .manual ? .blue : .secondary)
                     .fixedSize()
             }
         }
         .opacity(connected ? 1 : 0.6)
-    }
-
-    private var modeText: String {
-        guard let profile else { return "Auto" }
-        return profile.mode == .manual ? "Manual" : "Auto"
     }
 }
 

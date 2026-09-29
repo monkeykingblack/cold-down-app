@@ -10,22 +10,10 @@
 		B00000000000000000000001 /* ThermalCore in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000001 /* ThermalCore */; };
 		B00000000000000000000002 /* IntelSMC in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000002 /* IntelSMC */; };
 		B00000000000000000000003 /* FlydigiHID in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000003 /* FlydigiHID */; };
-		B00000000000000000000004 /* ColdDownShared in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000004 /* ColdDownShared */; };
-		B00000000000000000000005 /* ThermalCore in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000005 /* ThermalCore */; };
-		B00000000000000000000006 /* IntelSMC in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000006 /* IntelSMC */; };
-		B00000000000000000000007 /* ColdDownShared in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000007 /* ColdDownShared */; };
-		B0000000000000000000000C /* ColdDownHelper in CopyFiles */ = {isa = PBXBuildFile; fileRef = F00000000000000000000002 /* ColdDownHelper */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		B0000000000000000000000D /* Sources/ColdDownHelper/Resources/ColdDownHelper.plist in CopyFiles */ = {isa = PBXBuildFile; fileRef = F00000000000000000000005 /* Sources/ColdDownHelper/Resources/ColdDownHelper.plist */; };
+		B0000000000000000000000E /* Scripts/uninstall.sh in CopyFiles */ = {isa = PBXBuildFile; fileRef = F00000000000000000000009 /* Scripts/uninstall.sh */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		C00000000000000000000001 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = E00000000000000000000001 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = A00000000000000000000002;
-			remoteInfo = ColdDownHelper;
-		};
 		C00000000000000000000002 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = E00000000000000000000001 /* Project object */;
@@ -43,23 +31,13 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		B10000000000000000000001 /* CopyFiles */ = {
+		B10000000000000000000003 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
-			dstPath = Contents/Library/HelperTools;
-			dstSubfolderSpec = 1;
+			dstPath = Scripts;
+			dstSubfolderSpec = 7;
 			files = (
-				B0000000000000000000000C /* ColdDownHelper in CopyFiles */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		B10000000000000000000002 /* CopyFiles */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = Contents/Library/LaunchDaemons;
-			dstSubfolderSpec = 1;
-			files = (
-				B0000000000000000000000D /* Sources/ColdDownHelper/Resources/ColdDownHelper.plist in CopyFiles */,
+				B0000000000000000000000E /* Scripts/uninstall.sh in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -67,13 +45,12 @@
 
 /* Begin PBXFileReference section */
 		F00000000000000000000001 /* Cold Down.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Cold Down.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		F00000000000000000000002 /* ColdDownHelper */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = ColdDownHelper; sourceTree = BUILT_PRODUCTS_DIR; };
 		F00000000000000000000003 /* ColdDownTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ColdDownTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F00000000000000000000004 /* ColdDownUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ColdDownUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		F00000000000000000000005 /* Sources/ColdDownHelper/Resources/ColdDownHelper.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Sources/ColdDownHelper/Resources/ColdDownHelper.plist; sourceTree = SOURCE_ROOT; };
 		F00000000000000000000006 /* Configuration/Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Configuration/Debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		F00000000000000000000007 /* Configuration/Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Configuration/Release.xcconfig; sourceTree = SOURCE_ROOT; };
 		F00000000000000000000008 /* Configuration/ProductIdentifiers.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Configuration/ProductIdentifiers.xcconfig; sourceTree = SOURCE_ROOT; };
+		F00000000000000000000009 /* Scripts/uninstall.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = Scripts/uninstall.sh; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -84,19 +61,10 @@
 			);
 			target = A00000000000000000000001 /* ColdDownApp */;
 		};
-		EE0000000000000000000002 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Resources/ColdDownHelper.plist,
-				Resources/Info.plist,
-			);
-			target = A00000000000000000000002 /* ColdDownHelper */;
-		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		G10000000000000000000001 /* Sources/ColdDownApp */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (EE0000000000000000000001 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Sources/ColdDownApp; sourceTree = SOURCE_ROOT; };
-		G10000000000000000000002 /* Sources/ColdDownHelper */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (EE0000000000000000000002 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Sources/ColdDownHelper; sourceTree = SOURCE_ROOT; };
 		G10000000000000000000003 /* Tests/ColdDownTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Tests/ColdDownTests; sourceTree = SOURCE_ROOT; };
 		G10000000000000000000004 /* Tests/ColdDownUITests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Tests/ColdDownUITests; sourceTree = SOURCE_ROOT; };
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -109,17 +77,6 @@
 				B00000000000000000000001 /* ThermalCore in Frameworks */,
 				B00000000000000000000002 /* IntelSMC in Frameworks */,
 				B00000000000000000000003 /* FlydigiHID in Frameworks */,
-				B00000000000000000000004 /* ColdDownShared in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		B20000000000000000000002 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				B00000000000000000000005 /* ThermalCore in Frameworks */,
-				B00000000000000000000006 /* IntelSMC in Frameworks */,
-				B00000000000000000000007 /* ColdDownShared in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -143,7 +100,7 @@
 		FAF23225306178CA0015B438 /* Recovered References */ = {
 			isa = PBXGroup;
 			children = (
-				F00000000000000000000005 /* Sources/ColdDownHelper/Resources/ColdDownHelper.plist */,
+				F00000000000000000000009 /* Scripts/uninstall.sh */,
 			);
 			name = "Recovered References";
 			sourceTree = "<group>";
@@ -152,7 +109,6 @@
 			isa = PBXGroup;
 			children = (
 				G10000000000000000000001 /* Sources/ColdDownApp */,
-				G10000000000000000000002 /* Sources/ColdDownHelper */,
 				G10000000000000000000003 /* Tests/ColdDownTests */,
 				G10000000000000000000004 /* Tests/ColdDownUITests */,
 				G00000000000000000000003 /* Configuration */,
@@ -165,7 +121,6 @@
 			isa = PBXGroup;
 			children = (
 				F00000000000000000000001 /* Cold Down.app */,
-				F00000000000000000000002 /* ColdDownHelper */,
 				F00000000000000000000003 /* ColdDownTests.xctest */,
 				F00000000000000000000004 /* ColdDownUITests.xctest */,
 			);
@@ -192,14 +147,11 @@
 				B30000000000000000000001 /* Sources */,
 				B20000000000000000000001 /* Frameworks */,
 				B40000000000000000000001 /* Resources */,
-				B10000000000000000000001 /* CopyFiles */,
-				B10000000000000000000002 /* CopyFiles */,
-				B50000000000000000000001 /* ShellScript */,
+				B10000000000000000000003 /* CopyFiles */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				T00000000000000000000001 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				G10000000000000000000001 /* Sources/ColdDownApp */,
@@ -209,36 +161,10 @@
 				D00000000000000000000001 /* ThermalCore */,
 				D00000000000000000000002 /* IntelSMC */,
 				D00000000000000000000003 /* FlydigiHID */,
-				D00000000000000000000004 /* ColdDownShared */,
 			);
 			productName = "Cold Down";
 			productReference = F00000000000000000000001 /* Cold Down.app */;
 			productType = "com.apple.product-type.application";
-		};
-		A00000000000000000000002 /* ColdDownHelper */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = L00000000000000000000002 /* Build configuration list for PBXNativeTarget "ColdDownHelper" */;
-			buildPhases = (
-				B30000000000000000000002 /* Sources */,
-				B20000000000000000000002 /* Frameworks */,
-				B40000000000000000000002 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				G10000000000000000000002 /* Sources/ColdDownHelper */,
-			);
-			name = ColdDownHelper;
-			packageProductDependencies = (
-				D00000000000000000000005 /* ThermalCore */,
-				D00000000000000000000006 /* IntelSMC */,
-				D00000000000000000000007 /* ColdDownShared */,
-			);
-			productName = ColdDownHelper;
-			productReference = F00000000000000000000002 /* ColdDownHelper */;
-			productType = "com.apple.product-type.tool";
 		};
 		A00000000000000000000003 /* ColdDownTests */ = {
 			isa = PBXNativeTarget;
@@ -299,9 +225,6 @@
 					A00000000000000000000001 = {
 						CreatedOnToolsVersion = 26.2;
 					};
-					A00000000000000000000002 = {
-						CreatedOnToolsVersion = 26.2;
-					};
 					A00000000000000000000003 = {
 						CreatedOnToolsVersion = 26.2;
 						TestTargetID = A00000000000000000000001;
@@ -330,7 +253,6 @@
 			projectRoot = "";
 			targets = (
 				A00000000000000000000001 /* ColdDownApp */,
-				A00000000000000000000002 /* ColdDownHelper */,
 				A00000000000000000000003 /* ColdDownTests */,
 				A00000000000000000000004 /* ColdDownUITests */,
 			);
@@ -339,13 +261,6 @@
 
 /* Begin PBXResourcesBuildPhase section */
 		B40000000000000000000001 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		B40000000000000000000002 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -368,36 +283,8 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
-/* Begin PBXShellScriptBuildPhase section */
-		B50000000000000000000001 /* ShellScript */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"$SRCROOT/Scripts/prepare-launch-daemon.sh\" \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Library/LaunchDaemons/ColdDownHelper.plist\" \"$THERMAL_HELPER_MACH_SERVICE\" \"$THERMAL_APP_BUNDLE_ID\"\n";
-		};
-/* End PBXShellScriptBuildPhase section */
-
 /* Begin PBXSourcesBuildPhase section */
 		B30000000000000000000001 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		B30000000000000000000002 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -421,11 +308,6 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		T00000000000000000000001 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = A00000000000000000000002 /* ColdDownHelper */;
-			targetProxy = C00000000000000000000001 /* PBXContainerItemProxy */;
-		};
 		T00000000000000000000002 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = A00000000000000000000001 /* ColdDownApp */;
@@ -466,34 +348,6 @@
 				PRODUCT_MODULE_NAME = ColdDownApp;
 				PRODUCT_NAME = "Cold Down";
 				SKIP_INSTALL = NO;
-			};
-			name = Release;
-		};
-		K00000000000000000000003 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = F00000000000000000000006 /* Configuration/Debug.xcconfig */;
-			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = Sources/ColdDownHelper/ColdDownHelper.entitlements;
-				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Sources/ColdDownHelper/Resources/Info.plist;
-				PRODUCT_BUNDLE_IDENTIFIER = "$(THERMAL_HELPER_BUNDLE_ID)";
-				PRODUCT_NAME = ColdDownHelper;
-				SKIP_INSTALL = YES;
-			};
-			name = Debug;
-		};
-		K00000000000000000000004 /* Release */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = F00000000000000000000007 /* Configuration/Release.xcconfig */;
-			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = Sources/ColdDownHelper/ColdDownHelper.entitlements;
-				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Sources/ColdDownHelper/Resources/Info.plist;
-				PRODUCT_BUNDLE_IDENTIFIER = "$(THERMAL_HELPER_BUNDLE_ID)";
-				PRODUCT_NAME = ColdDownHelper;
-				SKIP_INSTALL = YES;
 			};
 			name = Release;
 		};
@@ -585,15 +439,6 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		L00000000000000000000002 /* Build configuration list for PBXNativeTarget "ColdDownHelper" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				K00000000000000000000003 /* Debug */,
-				K00000000000000000000004 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		L00000000000000000000003 /* Build configuration list for PBXNativeTarget "ColdDownTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -645,26 +490,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = P00000000000000000000001 /* XCLocalSwiftPackageReference "." */;
 			productName = FlydigiHID;
-		};
-		D00000000000000000000004 /* ColdDownShared */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = P00000000000000000000001 /* XCLocalSwiftPackageReference "." */;
-			productName = ColdDownShared;
-		};
-		D00000000000000000000005 /* ThermalCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = P00000000000000000000001 /* XCLocalSwiftPackageReference "." */;
-			productName = ThermalCore;
-		};
-		D00000000000000000000006 /* IntelSMC */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = P00000000000000000000001 /* XCLocalSwiftPackageReference "." */;
-			productName = IntelSMC;
-		};
-		D00000000000000000000007 /* ColdDownShared */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = P00000000000000000000001 /* XCLocalSwiftPackageReference "." */;
-			productName = ColdDownShared;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

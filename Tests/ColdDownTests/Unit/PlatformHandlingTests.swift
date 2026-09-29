@@ -20,14 +20,6 @@ final class PlatformHandlingTests: XCTestCase {
         XCTAssertEqual(ChipPlatform.resolve(brandString: "", isAppleSilicon: false), .intel)
     }
 
-    func testFanModeValues() {
-        XCTAssertFalse(SMCFanKeys.isForced(modeByte: 0))
-        XCTAssertTrue(SMCFanKeys.isForced(modeByte: 1))
-        XCTAssertFalse(SMCFanKeys.isForced(modeByte: 3), "3 = system-controlled on Apple Silicon")
-        XCTAssertEqual(SMCFanKeys.modeKey(0, lowercase: true), "F0md")
-        XCTAssertEqual(SMCFanKeys.modeKey(1, lowercase: false), "F1Md")
-    }
-
     func testM4BaseAndProUseDifferentFirstGPUKeys() {
         let base = Set(AppleSiliconSMCSensorKeys.definitions(for: .appleSilicon(generation: 4, tier: .base)).map(\.key))
         let pro = Set(AppleSiliconSMCSensorKeys.definitions(for: .appleSilicon(generation: 4, tier: .pro)).map(\.key))

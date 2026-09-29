@@ -1,7 +1,7 @@
 import SwiftUI
 import ThermalCore
 
-/// One fan as a full-width card: live status row with the Auto/Manual switch, and that mode's controls inline.
+/// The cooler as a full-width card: live status row with the Auto/Manual switch, and that mode's controls inline.
 /// Holds the user's draft settings; see `FanConfigurationViewModel` for how live device state is merged in.
 struct FanControlCard: View {
     /// Short: this only groups keystrokes and drag ticks. The real "end of action" debounce lives in AppModel.
@@ -31,7 +31,7 @@ struct FanControlCard: View {
     private var liveFan: FanDeviceState? { appModel.snapshot.fans.first { $0.id == fanID } }
     private var unit: String { model.fan.capabilities?.unit ?? "RPM" }
     private var connected: Bool { model.fan.connection == .connected }
-    private var tint: Color { model.fan.kind == .builtIn ? .accentColor : .cyan }
+    private var tint: Color { .cyan }
 
     var body: some View {
         DashboardCard {
@@ -69,19 +69,14 @@ struct FanControlCard: View {
         HStack(spacing: 12) {
             ZStack {
                 SpeedRing(fraction: connected ? Dashboard.speedFraction(model.fan) : nil, tint: tint, lineWidth: 4)
-                Image(systemName: model.fan.kind == .builtIn ? "fan" : "snowflake")
+                Image(systemName: "snowflake")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(connected ? tint : .secondary)
             }
             .frame(width: 38, height: 38)
             VStack(alignment: .leading, spacing: 2) {
                 Text(model.fan.name).font(.headline).lineLimit(1)
-                // Activity takes the subtitle's place so the card never changes height.
-                if let activity {
-                    FanActivityLine(activity: activity)
-                } else {
-                    Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                }
+                Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             .layoutPriority(1)
             Spacer(minLength: 8)
@@ -99,21 +94,17 @@ struct FanControlCard: View {
             }
             PillSegmentedControl.fanMode(modeBinding, fanName: model.fan.name, identifier: AccessibilityID.fanMode(fanID))
                 .disabled(!model.controlsEnabled)
-            .onChange(of: model.mode) { _, _ in commitNow() }
+                .onChange(of: model.mode) { _, _ in commitNow() }
         }
-    }
-
-    private var activity: Dashboard.FanActivity? {
-        Dashboard.activity(fan: model.fan, profile: appModel.snapshot.profiles[fanID], decision: appModel.snapshot.lastDecision)
     }
 
     private var subtitle: String {
-        guard connected else { return "\(model.fan.kind == .builtIn ? "Built-in" : "External") · Disconnected" }
-        var parts = [model.fan.kind == .builtIn ? "Built-in" : "External"]
+        guard connected else { return "Disconnected" }
+        var parts: [String] = []
         if let capabilities = model.fan.capabilities {
             parts.append("\(capabilities.minimum.formatted())–\(capabilities.maximum.formatted()) \(unit)")
         }
-        return parts.joined(separator: " · ")
+        return parts.isEmpty ? "Connected" : parts.joined(separator: " · ")
     }
 
     @ViewBuilder
